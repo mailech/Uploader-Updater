@@ -8,7 +8,7 @@
 const express = require('express');
 const path = require('path');
 const prisma = require('../config/prisma');
-const { previewImport, commitImport } = require('../services/import/kvkImportEngine');
+const { previewImport, commitImport, commitRecords } = require('../services/import/kvkImportEngine');
 const { xlsxToSheets } = require('../services/import/xlsxToSheets');
 
 const app = express();
@@ -50,6 +50,11 @@ app.post('/api/commit', async (req, res) => {
   try {
     const kvkId = Number(req.body && req.body.kvkId);
     if (!kvkId) throw new Error('Choose a KVK to import into.');
+    // If the UI sends reviewed/edited records, import those; otherwise re-map the raw file.
+    if (req.body && Array.isArray(req.body.forms)) {
+      const report = await commitRecords({ prisma, kvkId, forms: req.body.forms });
+      return res.json({ report });
+    }
     const data = await toData(req.body);
     const report = await commitImport({ prisma, data, kvkId });
     res.json({ report });

@@ -345,6 +345,65 @@ async function _messageChannels({ prisma, sheet, kvkId, user, dryRun, report }) 
   } catch (e) { report.forms.push({ sheet: 'View_Details_of_messages_s', supported: true, failed: 1, failures: [{ reason: e.message }] }); }
 }
 
+// combo forms (no FORMS entry) — their repo + dedup so edited records can still be saved
+const COMBO_COMMIT = {
+  budgetDetail: { repo: 'budgetDetail', key: (d, kid) => ({ kvkId: kid, startDate: new Date(d.startDate) }) },
+  staffQuartersUtilization: { repo: 'staffQuartersUtilization', key: (d, kid) => ({ kvkId: kid }) },
+  msgDetails: { repo: 'msgDetails', key: (d, kid) => ({ kvkId: kid }) },
+};
+
+// commit USER-REVIEWED/EDITED records (from the preview screen) instead of re-mapping the file.
+// forms: [{ model, sheet?, records: [...] }]. Inserts via the same repositories + dedup guard.
+async function commitRecords({ prisma, kvkId, forms }) {
+  kvkId = Number(kvkId);
+  if (!kvkId) throw new Error('kvkId is required to import');
+  const user = await resolveUser(prisma, kvkId);
+  const masters = await loadMasters(prisma);
+  const ctx = { KID: kvkId, prisma, ...masters, matchAccountType: makeMatchAccountType(masters.ACCT_MASTER) };
+  const byModel = {};
+  buildForms(ctx).forEach((f) => { if (!byModel[f.model]) byModel[f.model] = f; });
+
+  const report = { kvkId, forms: [], totals: { inserted: 0, skipped: 0, failed: 0 } };
+  for (const inForm of (forms || [])) {
+    const model = inForm.model;
+    const recs = inForm.records || [];
+    const res = { sheet: inForm.sheet || model, model, inserted: 0, skipped: 0, failed: 0, failures: [] };
+    const f = byModel[model];
+    const combo = COMBO_COMMIT[model];
+
+    let createFn, keyFn;
+    if (f) {
+      keyFn = f.key;
+      if (f.direct) createFn = (d) => f.direct(d);
+      else {
+        let repo; try { repo = R(f.repo); } catch (e) { res.failures.push({ reason: 'repo load failed: ' + e.message }); report.forms.push(res); continue; }
+        const fn = f.repoKey ? (repo[f.repoKey] && repo[f.repoKey].create) : (repo.create || (repo[Object.keys(repo)[0]] && repo[Object.keys(repo)[0]].create));
+        if (typeof fn !== 'function') { res.failures.push({ reason: 'no create() on repo' }); report.forms.push(res); continue; }
+        createFn = (d) => fn(d, user);
+      }
+    } else if (combo) {
+      keyFn = (d) => combo.key(d, kvkId);
+      createFn = (d) => R(combo.repo).create(d, user);
+    } else {
+      res.failures.push({ reason: 'unknown form: ' + model });
+      report.forms.push(res); continue;
+    }
+
+    let i = 0;
+    for (const d of recs) {
+      i++;
+      try {
+        if (keyFn) { const ex = await prisma[model].findFirst({ where: keyFn(d) }); if (ex) { res.skipped++; continue; } }
+        await createFn(d);
+        res.inserted++;
+      } catch (e) { res.failed++; if (res.failures.length < 8) res.failures.push({ row: i, reason: e.message }); }
+    }
+    report.totals.inserted += res.inserted; report.totals.skipped += res.skipped; report.totals.failed += res.failed;
+    report.forms.push(res);
+  }
+  return report;
+}
+
 // ---------- public API ----------
 async function previewImport({ prisma, data }) {
   return _run({ prisma, data, kvkId: null, dryRun: true });
@@ -354,4 +413,4 @@ async function commitImport({ prisma, data, kvkId }) {
   return _run({ prisma, data, kvkId: Number(kvkId), dryRun: false });
 }
 
-module.exports = { previewImport, commitImport, _run, buildForms, loadMasters };
+module.exports = { previewImport, commitImport, commitRecords, _run, buildForms, loadMasters };

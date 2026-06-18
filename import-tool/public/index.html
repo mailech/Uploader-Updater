@@ -50,6 +50,9 @@
   .map-table th { background:#f9fafb; position:sticky; top:0; }
   .map-table td { max-width:260px; overflow:hidden; text-overflow:ellipsis; }
   .map-table tr.warnrow td { background:#fffbeb; }
+  .lnk { background:none; border:0; color:#2563eb; font-size:12px; cursor:pointer; padding:0 4px; font-weight:600; }
+  .lnk:hover { text-decoration:underline; }
+  input.ed { width:100%; min-width:90px; font-size:12px; padding:3px 5px; border:1px solid #d1d5db; border-radius:4px; }
 </style>
 </head>
 <body>
@@ -152,31 +155,58 @@ function renderResult(report, sheets) {
   if ((report.knownSkipped || []).length) html += '<p class="muted">Intentionally skipped (no table): ' + report.knownSkipped.join(', ') + '</p>';
   $('issues').innerHTML = html;
 
-  // per-form mapping review — exactly what will be saved, field by field
-  const pretty = (k) => k.replace(/([A-Z])/g, ' $1').replace(/ Id\b/, '').replace(/^./, c => c.toUpperCase()).trim();
-  const cell = (v) => { if (v === null || v === undefined || v === '') return '<span class="muted">—</span>'; const s = String(v); return s.length > 140 ? s.slice(0, 140) + '…' : s; };
-  const forms = report.forms.filter(f => (f.records && f.records.length) || f.failed);
-  $('forms').innerHTML = forms.map(f => {
-    const recs = f.records || [], warns = f.warnings || [];
-    const cols = recs.length ? Object.keys(recs[0]) : [];
-    const warnByRow = {}; warns.forEach(w => { (warnByRow[w.row] = warnByRow[w.row] || []).push(w.msg); });
-    const badges = (recs.length ? '<span class="badge n">' + recs.length + ' rows</span>' : '') +
-      (warns.length ? '<span class="badge w">⚠ ' + warns.length + '</span>' : '') +
-      (f.failed ? '<span class="badge f">✗ ' + f.failed + '</span>' : '');
-    const warnList = warns.length ? '<div class="box warn" style="margin:8px 0">' + warns.map(w => '<div>row ' + w.row + ': ' + w.msg + '</div>').join('') + '</div>' : '';
-    const head = '<tr><th>#</th>' + cols.map(c => '<th>' + pretty(c) + '</th>').join('') + '</tr>';
-    const rows = recs.map((d, idx) => {
-      const rn = idx + 1; const cls = warnByRow[rn] ? ' class="warnrow"' : '';
-      return '<tr' + cls + '><td>' + rn + '</td>' + cols.map(c => '<td title="' + String(d[c] == null ? '' : d[c]).replace(/"/g, '&quot;') + '">' + cell(d[c]) + '</td>').join('') + '</tr>';
-    }).join('');
-    return '<details class="form-acc"><summary>' + f.sheet + badges + '</summary><div class="body">' + warnList +
-      '<div class="scroll"><table class="map-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div></div></details>';
-  }).join('');
+  // build editable per-form state, then render
+  buildFormState(report);
+  renderForms();
 
   $('resultCard').classList.remove('hide');
   $('importCard').classList.remove('hide');
   loadKvks();
 }
+
+// ---- editable per-form mapping ----
+let IMP = { forms: [] };
+const pretty = (k) => k.replace(/([A-Z])/g, ' $1').replace(/ Id\b/, '').replace(/^./, c => c.toUpperCase()).trim();
+const cell = (v) => { if (v === null || v === undefined || v === '') return '<span class="muted">—</span>'; const s = String(v); return s.length > 140 ? s.slice(0, 140) + '…' : s; };
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+function buildFormState(report) {
+  IMP.forms = report.forms.filter(f => (f.records && f.records.length) || f.failed).map(f => ({
+    sheet: f.sheet, model: f.model,
+    records: (f.records || []).map(r => Object.assign({}, r)),
+    cols: (f.records && f.records.length) ? Object.keys(f.records[0]) : [],
+    warnings: f.warnings || [], failed: f.failed || 0, editing: false,
+  }));
+}
+
+function renderForms() {
+  $('forms').innerHTML = IMP.forms.map((f, fi) => {
+    const badges = (f.records.length ? '<span class="badge n">' + f.records.length + ' rows</span>' : '')
+      + (f.warnings.length ? '<span class="badge w">⚠ ' + f.warnings.length + '</span>' : '')
+      + (f.failed ? '<span class="badge f">✗ ' + f.failed + '</span>' : '');
+    const editBtn = '<button class="lnk" onclick="toggleEdit(event,' + fi + ')">' + (f.editing ? '✓ done' : '✎ edit') + '</button>';
+    const warnByRow = {}; f.warnings.forEach(w => { (warnByRow[w.row] = warnByRow[w.row] || []).push(w.msg); });
+    const warnList = f.warnings.length ? '<div class="box warn" style="margin:8px 0">' + f.warnings.map(w => 'row ' + w.row + ': ' + w.msg).join('<br>') + '</div>' : '';
+    const head = '<tr><th>#</th>' + f.cols.map(c => '<th>' + pretty(c) + '</th>').join('') + '</tr>';
+    const rows = f.records.map((d, ri) => {
+      const cls = warnByRow[ri + 1] ? ' class="warnrow"' : '';
+      const cells = f.cols.map(c => f.editing
+        ? '<td><input class="ed" data-fi="' + fi + '" data-ri="' + ri + '" data-col="' + c + '" value="' + esc(d[c]) + '"></td>'
+        : '<td title="' + esc(d[c]) + '">' + cell(d[c]) + '</td>').join('');
+      return '<tr' + cls + '><td>' + (ri + 1) + '</td>' + cells + '</tr>';
+    }).join('');
+    const addCol = f.editing ? '<div style="margin-top:8px"><button class="lnk" onclick="addColumn(' + fi + ')">+ add column</button> <span class="muted" style="font-size:11px">(only fields that exist on this form get saved)</span></div>' : '';
+    return '<details class="form-acc"' + (f.editing ? ' open' : '') + '><summary>' + f.sheet + badges + ' ' + editBtn + '</summary><div class="body">' + warnList + '<div class="scroll"><table class="map-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + addCol + '</div></details>';
+  }).join('');
+}
+
+function toggleEdit(e, fi) { e.preventDefault(); e.stopPropagation(); IMP.forms[fi].editing = !IMP.forms[fi].editing; renderForms(); }
+function addColumn(fi) { const name = prompt('New field name (must match a field on this form to be saved):'); if (!name) return; const f = IMP.forms[fi]; if (!f.cols.includes(name)) f.cols.push(name); f.records.forEach(r => { if (!(name in r)) r[name] = ''; }); renderForms(); }
+// live-edit cells via delegation (no re-render -> no focus loss)
+$('forms').addEventListener('input', (e) => {
+  const t = e.target; if (!t.classList || !t.classList.contains('ed')) return;
+  const f = IMP.forms[+t.dataset.fi]; if (f && f.records[+t.dataset.ri]) f.records[+t.dataset.ri][t.dataset.col] = t.value;
+});
 
 let kvksLoaded = false;
 async function loadKvks() {
@@ -195,7 +225,8 @@ commitBtn.onclick = async () => {
   if (!confirm('Import this data into the selected KVK? This writes to the live database.')) return;
   commitBtn.disabled = true; commitBtn.textContent = 'Importing…';
   try {
-    const r = await fetch('/api/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ kvkId: Number(kvkId) }, payload)) });
+    const forms = IMP.forms.map(f => ({ model: f.model, sheet: f.sheet, records: f.records }));
+    const r = await fetch('/api/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kvkId: Number(kvkId), forms }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Import failed');
     const t = j.report.totals;
