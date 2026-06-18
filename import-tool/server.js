@@ -31,6 +31,24 @@ function sheetSummary(data) {
   })).filter((x) => x.rows > 0);
 }
 
+// dropdown options for the FK fields, keyed by the record column name the UI sees
+app.get('/api/masters', async (req, res) => {
+  try {
+    const [season, project, agency, acct] = await Promise.all([
+      prisma.season.findMany().catch(() => []),
+      prisma.financialProject.findMany().catch(() => []),
+      prisma.fundingAgency.findMany().catch(() => []),
+      prisma.accountTypeMaster.findMany().catch(() => []),
+    ]);
+    res.json({
+      seasonId: season.map((s) => ({ value: s.seasonId, label: s.seasonName })),
+      financialProjectId: project.map((p) => ({ value: p.financialProjectId, label: p.projectName })),
+      fundingAgencyId: agency.map((a) => ({ value: a.fundingAgencyId, label: a.agencyName })),
+      items: acct.map((a) => ({ value: a.accountType, label: a.accountType })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/kvks', async (req, res) => {
   try {
     const rows = await prisma.kvk.findMany({ orderBy: { kvkId: 'asc' } });

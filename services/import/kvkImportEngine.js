@@ -237,7 +237,7 @@ async function _run({ prisma, data, kvkId, dryRun }) {
 
   for (const f of FORMS) {
     const rows = sheet(f.sheet).filter((r) => (f.filter ? f.filter(r) : true));
-    const res = { sheet: f.sheet, model: f.model, supported: true, present: (sheet(f.sheet).length > 0), inserted: 0, skipped: 0, failed: 0, failures: [], warnings: [], records: [] };
+    const res = { sheet: f.sheet, model: f.model, supported: true, present: (sheet(f.sheet).length > 0), inserted: 0, skipped: 0, failed: 0, failures: [], warnings: [], records: [], fieldTypes: (modelMeta(f.model) || { scalars: {} }).scalars };
 
     let createFn = f.direct;
     if (!createFn) {

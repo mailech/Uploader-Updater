@@ -166,6 +166,7 @@ function renderResult(report, sheets) {
 
 // ---- editable per-form mapping ----
 let IMP = { forms: [] };
+let MASTERS = {};   // { seasonId:[{value,label}], financialProjectId:[...], fundingAgencyId:[...], items:[...] }
 const pretty = (k) => k.replace(/([A-Z])/g, ' $1').replace(/ Id\b/, '').replace(/^./, c => c.toUpperCase()).trim();
 const cell = (v) => { if (v === null || v === undefined || v === '') return '<span class="muted">—</span>'; const s = String(v); return s.length > 140 ? s.slice(0, 140) + '…' : s; };
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -175,7 +176,7 @@ function buildFormState(report) {
     sheet: f.sheet, model: f.model,
     records: (f.records || []).map(r => Object.assign({}, r)),
     cols: (f.records && f.records.length) ? Object.keys(f.records[0]) : [],
-    warnings: f.warnings || [], failed: f.failed || 0, editing: false,
+    warnings: f.warnings || [], failed: f.failed || 0, editing: false, fieldTypes: f.fieldTypes || {},
   }));
 }
 
@@ -189,17 +190,16 @@ function renderForms() {
     const warnList = f.warnings.length ? '<div class="box warn" style="margin:8px 0">' + f.warnings.map(w => 'row ' + w.row + ': ' + w.msg).join('<br>') + '</div>' : '';
     const head = '<tr><th>#</th>' + f.cols.map((c, idx) => {
       const removable = f.editing && f.addedCols && f.addedCols.includes(c);
-      return '<th>' + pretty(c) + (removable ? ' <button class="lnk" title="remove this column" onclick="removeColumn(' + fi + ',' + idx + ')">✕</button>' : '') + '</th>';
+      const fill = f.editing ? ' <button class="lnk" title="fill all rows with the first row\'s value" onclick="fillDown(' + fi + ',' + idx + ')">⤓</button>' : '';
+      return '<th style="white-space:nowrap">' + pretty(c) + fill + (removable ? ' <button class="lnk" title="remove this column" onclick="removeColumn(' + fi + ',' + idx + ')">✕</button>' : '') + '</th>';
     }).join('') + '</tr>';
     const rows = f.records.map((d, ri) => {
       const cls = warnByRow[ri + 1] ? ' class="warnrow"' : '';
-      const cells = f.cols.map(c => f.editing
-        ? '<td><input class="ed" data-fi="' + fi + '" data-ri="' + ri + '" data-col="' + c + '" value="' + esc(d[c]) + '"></td>'
-        : '<td title="' + esc(d[c]) + '">' + cell(d[c]) + '</td>').join('');
+      const cells = f.cols.map(c => renderCell(fi, ri, c, d)).join('');
       const num = (ri + 1) + (f.editing ? ' <button class="lnk" title="delete this row" onclick="removeRow(' + fi + ',' + ri + ')">✕</button>' : '');
       return '<tr' + cls + '><td style="white-space:nowrap">' + num + '</td>' + cells + '</tr>';
     }).join('');
-    const addCol = f.editing ? '<div style="margin-top:8px"><button class="lnk" onclick="addColumn(' + fi + ')">+ add column</button> <span class="muted" style="font-size:11px">(only fields that exist on this form get saved)</span></div>' : '';
+    const addCol = f.editing ? '<div style="margin-top:8px"><button class="lnk" onclick="addColumn(' + fi + ')">+ add column</button> <button class="lnk" onclick="fillEmpties(' + fi + ')">fill empty cells (text→A, number→1)</button> <span class="muted" style="font-size:11px">(added fields save only if they exist on this form)</span></div>' : '';
     return '<details class="form-acc"' + (f.editing ? ' open' : '') + '><summary>' + f.sheet + badges + ' ' + editBtn + '</summary><div class="body">' + warnList + '<div class="scroll"><table class="map-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + addCol + '</div></details>';
   }).join('');
 }
@@ -208,11 +208,58 @@ function toggleEdit(e, fi) { e.preventDefault(); e.stopPropagation(); IMP.forms[
 function addColumn(fi) { const name = prompt('New field name (must match a field on this form to be saved):'); if (!name) return; const f = IMP.forms[fi]; if (!f.cols.includes(name)) f.cols.push(name); (f.addedCols = f.addedCols || []).push(name); f.records.forEach(r => { if (!(name in r)) r[name] = ''; }); renderForms(); }
 function removeColumn(fi, idx) { const f = IMP.forms[fi]; const name = f.cols[idx]; if (!name) return; f.cols.splice(idx, 1); if (f.addedCols) f.addedCols = f.addedCols.filter(c => c !== name); f.records.forEach(r => { delete r[name]; }); renderForms(); }
 function removeRow(fi, ri) { const f = IMP.forms[fi]; f.records.splice(ri, 1); renderForms(); }
+
+// render one cell: a real dropdown for master fields, else an editable box (edit mode);
+// in view mode, master fields show the readable label instead of the id number.
+function renderCell(fi, ri, c, d) {
+  const opts = MASTERS[c];
+  const v = d[c];
+  if (IMP.forms[fi].editing) {
+    if (opts) {
+      const cur = v == null ? '' : String(v);
+      const known = opts.some(o => String(o.value) === cur);
+      let h = '<td><select class="eds" data-fi="' + fi + '" data-ri="' + ri + '" data-col="' + c + '"><option value="">— select —</option>';
+      h += opts.map(o => '<option value="' + esc(o.value) + '"' + (String(o.value) === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('');
+      if (cur && !known) h += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
+      return h + '</select></td>';
+    }
+    return '<td><input class="ed" data-fi="' + fi + '" data-ri="' + ri + '" data-col="' + c + '" value="' + esc(v) + '"></td>';
+  }
+  if (opts) { const o = opts.find(x => String(x.value) === String(v)); return '<td title="' + esc(v) + '">' + (o ? esc(o.label) : cell(v)) + '</td>'; }
+  return '<td title="' + esc(v) + '">' + cell(v) + '</td>';
+}
+
+// "fill the rest" — copy the first row's value of this column into every row
+function fillDown(fi, idx) { const f = IMP.forms[fi]; const col = f.cols[idx]; if (!f.records.length) return; const v = f.records[0][col]; f.records.forEach(r => { r[col] = v; }); renderForms(); }
+
+// fill blank cells: number columns -> 1, text columns -> "A" (skips dropdowns & date columns)
+function fillEmpties(fi) {
+  const f = IMP.forms[fi];
+  f.cols.forEach(col => {
+    if (MASTERS[col]) return;
+    const t = (f.fieldTypes && f.fieldTypes[col]) || '';
+    if (t === 'DateTime') return;
+    let numeric = ['Int', 'BigInt', 'Float', 'Decimal'].includes(t);
+    if (!t) { const vals = f.records.map(r => r[col]).filter(v => v !== '' && v != null); numeric = vals.length > 0 && vals.every(v => /^-?\d+(\.\d+)?$/.test(String(v))); }
+    f.records.forEach(r => { if (r[col] === '' || r[col] == null) r[col] = numeric ? 1 : 'A'; });
+  });
+  renderForms();
+}
+
 // live-edit cells via delegation (no re-render -> no focus loss)
 $('forms').addEventListener('input', (e) => {
   const t = e.target; if (!t.classList || !t.classList.contains('ed')) return;
   const f = IMP.forms[+t.dataset.fi]; if (f && f.records[+t.dataset.ri]) f.records[+t.dataset.ri][t.dataset.col] = t.value;
 });
+// dropdown changes (master selects)
+$('forms').addEventListener('change', (e) => {
+  const t = e.target; if (!t.classList || !t.classList.contains('eds')) return;
+  const f = IMP.forms[+t.dataset.fi]; if (!f || !f.records[+t.dataset.ri]) return;
+  let v = t.value; if (/Id$/.test(t.dataset.col)) v = (v === '' ? null : Number(v));
+  f.records[+t.dataset.ri][t.dataset.col] = v;
+});
+// load dropdown options once
+fetch('/api/masters').then(r => r.json()).then(m => { MASTERS = m || {}; if (IMP.forms.length) renderForms(); }).catch(() => {});
 
 let kvksLoaded = false;
 async function loadKvks() {
