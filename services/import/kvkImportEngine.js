@@ -128,7 +128,8 @@ function buildForms(ctx) {
 
     { sheet: 'District_level_data_on_agr', model: 'districtLevelData', repo: 'districtLevelData',
       map: (r) => { const items = matchAccountType(inferAccountType(r)); const isLive = /livestock/i.test(items); const crop = S(r['Name of Crop']); const area = num(r['Area (ha)'] || r['Area(ha)']); return { items, information: S(r['Information']), season: S(r['Season']), type: S(r['Type']), cropName: isLive ? '' : crop, area: isLive ? 0 : area, production: num(r['Production(MT)']), productivity: num(r['Productivity(q/ha)']), month: S(r['Month']), rainfall: num(r['Rainfall(mm)']), maxTemp: num(r['Max. Tem.(0C)']), minTemp: num(r['Min. Tem.(0C)']), maxRH: num(r['Max. R.H.(%)']), minRH: num(r['Min. R.H.(%)']), livestockName: isLive ? crop : S(r['Name of Livestock']), number: isLive ? area : num(r['Number']), reportingYear: toRYDate(r['Reporting Year']) }; },
-      key: (d) => ({ kvkId: KID, items: d.items, cropName: d.cropName, season: d.season, month: d.month, livestockName: d.livestockName }) },
+      key: (d) => ({ kvkId: KID, items: d.items, cropName: d.cropName, season: d.season, month: d.month, livestockName: d.livestockName }),
+      warn: (d, r) => { const raw = inferAccountType(r); const out = []; if (raw && d.items && _normA(raw) !== _normA(d.items)) out.push(`Account type "${raw}" auto-matched to "${d.items}"`); if (!d.items) out.push('Account type could not be determined — left blank'); return out; } },
 
     { sheet: 'View_Details_of_other_meet', model: 'atariMeeting',
       direct: (d) => prisma.atariMeeting.create({ data: { kvkId: KID, meetingDate: new Date(d.meetingDate), typeOfMeeting: d.typeOfMeeting, agenda: d.agenda, representativeFromAtari: d.representativeFromAtari, reportingYear: new Date(d.reportingYear) } }),
@@ -148,11 +149,13 @@ function buildForms(ctx) {
     { sheet: 'View_Performance_of_Instru', model: 'instructionalFarmCrop', repo: 'instructionalFarmCrop',
       filter: (r) => S(r['Name Of the Crop']),
       map: (r) => ({ seasonId: SEASON[S(r['Season']).toLowerCase()] || null, cropName: S(r['Name Of the Crop']), area: num(r['Area(ha)']), variety: S(r['Variety']), typeOfProduce: S(r['Type of Produce']), quantity: num(r['Qty.(q)']), costOfInputs: num(r['Cost of Inputs']), grossIncome: num(r['Gross Income']), remarks: S(r['Remarks']), reportingYear: toRYDate(r['Reporting Year']) }),
-      key: (d) => ({ kvkId: KID, cropName: d.cropName, variety: d.variety, typeOfProduce: d.typeOfProduce }) },
+      key: (d) => ({ kvkId: KID, cropName: d.cropName, variety: d.variety, typeOfProduce: d.typeOfProduce }),
+      warn: (d, r) => { const s = S(r['Season']); return (s && s.toLowerCase() !== 'please select' && !d.seasonId) ? [`Season "${s}" not recognised — saved without a season`] : []; } },
 
     { sheet: 'View_Project_wise_Budget_D', model: 'projectBudget', repo: 'projectBudget',
       map: (r) => { const pn = S(r['Name of project'] || r['Project Name']); const an = S(r['Name of Funding agency'] || r['Funding Agency']); const othP = PROJECT['others']; const othA = AGENCY['others'] || AGENCY['other']; const pid = PROJECT[pn.toLowerCase()] || othP; const aid = AGENCY[an.toLowerCase()] || othA; return { startDate: toISO(r['Start Date']), endDate: toISO(r['End Date']), financialProjectId: pid, fundingAgencyId: aid, specifyProjectName: pid === othP ? (S(r['Please specify']) || pn) : null, specifyAgencyName: aid === othA ? an : null, accountNumber: S(r['Account Number']), budgetEstimate: num(r['Budget Estimate']), budgetAllocated: num(r['Budget Allocated']), budgetReleased: num(r['Budget Released']), expenditure: num(r['Expenditure']) }; },
-      key: (d) => ({ kvkId: KID, accountNumber: d.accountNumber, financialProjectId: d.financialProjectId, budgetAllocated: d.budgetAllocated, specifyProjectName: d.specifyProjectName }) },
+      key: (d) => ({ kvkId: KID, accountNumber: d.accountNumber, financialProjectId: d.financialProjectId, budgetAllocated: d.budgetAllocated, specifyProjectName: d.specifyProjectName }),
+      warn: (d, r) => { const out = []; const pn = S(r['Name of project'] || r['Project Name']); if (pn && pn.toLowerCase() !== 'others' && d.financialProjectId === PROJECT['others']) out.push(`Project "${pn}" not in master — saved as "Others"`); const an = S(r['Name of Funding agency'] || r['Funding Agency']); if (an && !['others', 'other'].includes(an.toLowerCase()) && d.fundingAgencyId === (AGENCY['others'] || AGENCY['other'])) out.push(`Funding agency "${an}" not in master — saved as "Others"`); return out; } },
 
     { sheet: 'View_Performance_of_Instru', model: 'instructionalFarmLivestock', repo: 'instructionalFarmLivestock',
       filter: (r) => { const a = S(r['Name of the Animal/Bird/Aquatics']); return a && a !== '0'; },
@@ -210,7 +213,7 @@ async function _run({ prisma, data, kvkId, dryRun }) {
 
   for (const f of FORMS) {
     const rows = sheet(f.sheet).filter((r) => (f.filter ? f.filter(r) : true));
-    const res = { sheet: f.sheet, model: f.model, supported: true, present: (sheet(f.sheet).length > 0), inserted: 0, skipped: 0, failed: 0, failures: [] };
+    const res = { sheet: f.sheet, model: f.model, supported: true, present: (sheet(f.sheet).length > 0), inserted: 0, skipped: 0, failed: 0, failures: [], warnings: [], records: [] };
 
     let createFn = f.direct;
     if (!createFn) {
@@ -227,6 +230,10 @@ async function _run({ prisma, data, kvkId, dryRun }) {
       i++;
       try {
         const d = f.map(r);
+        if (dryRun) {
+          res.records.push(d);
+          if (f.warn) { for (const msg of (f.warn(d, r) || [])) res.warnings.push({ row: i, msg }); }
+        }
         if (kvkId) { const ex = await prisma[f.model].findFirst({ where: f.key(d) }); if (ex) { res.skipped++; continue; } }
         if (!dryRun) await createFn(d);
         res.inserted++;
@@ -258,14 +265,14 @@ async function _budgetDetails({ prisma, sheet, kvkId, user, dryRun, report }) {
     const mains = sheet('View_Budget_Details');
     if (!mains.length) return;
     const g = sheet('View_Budget_Details - Start Dat');
-    const res = { sheet: 'View_Budget_Details', model: 'budgetDetail', supported: true, present: true, inserted: 0, skipped: 0, failed: 0, failures: [] };
+    const res = { sheet: 'View_Budget_Details', model: 'budgetDetail', supported: true, present: true, inserted: 0, skipped: 0, failed: 0, failures: [], warnings: [], records: [] };
     for (let i = 0; i < mains.length; i++) {
       const m = mains[i], g0 = g[2 * i] || {}, g1 = g[2 * i + 1] || {};
       const endIso = toISO(m['End Date']);
       const startDate = toISO(g1['Start Date']) || (endIso ? `${parseInt(endIso.slice(0, 4), 10) - 1}-04-01` : '2025-04-01');
       try {
         if (kvkId) { const ex = await prisma.budgetDetail.findFirst({ where: { kvkId, startDate: new Date(startDate) } }); if (ex) { res.skipped++; continue; } }
-        if (!dryRun) await R('budgetDetail').create({
+        const rec = {
           startDate, endDate: endIso || '2025-12-31',
           salaryAllocation: num(m['Salary Allocation']), salaryExpenditure: num(m['Salary Expenditure']),
           generalMainGrantAllocation: num(m['General Main Grant Allocation']), generalMainGrantExpenditure: num(m['General Main Grant Expenditure']),
@@ -274,7 +281,8 @@ async function _budgetDetails({ prisma, sheet, kvkId, user, dryRun, report }) {
           capitalMainGrantAllocation: num(m['Capital Main Grant Allocation']), capitalMainGrantExpenditure: num(m['Capital Main Grant Expenditure']),
           capitalTspGrantAllocation: num(g1['TSP Grant Allocation']), capitalTspGrantExpenditure: num(g1['TSP Grant Expenditure']),
           capitalScspGrantAllocation: num(g1['SCSP Grant Allocation']), capitalScspGrantExpenditure: num(g1['SCSP Grant Expenditure']),
-        }, user);
+        };
+        if (dryRun) res.records.push(rec); else await R('budgetDetail').create(rec, user);
         res.inserted++;
       } catch (e) { res.failed++; if (res.failures.length < 8) res.failures.push({ row: i + 1, reason: e.message }); }
     }
@@ -288,19 +296,20 @@ async function _staffQuarters({ prisma, sheet, kvkId, user, dryRun, report }) {
   try {
     const sm = sheet('View_Utilization_of_Staff_')[0];
     if (!sm) return;
-    const res = { sheet: 'View_Utilization_of_Staff_', model: 'staffQuartersUtilization', supported: true, present: true, inserted: 0, skipped: 0, failed: 0, failures: [] };
+    const res = { sheet: 'View_Utilization_of_Staff_', model: 'staffQuartersUtilization', supported: true, present: true, inserted: 0, skipped: 0, failed: 0, failures: [], warnings: [], records: [] };
     if (kvkId) { const ex = await prisma.staffQuartersUtilization.findFirst({ where: { kvkId } }); if (ex) { res.skipped = 1; report.forms.push(res); return; } }
     const MO = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const sg = sheet('View_Utilization_of_Staff_ - Da');
     const gr = sg.find((r) => S(r['Date of Completion'])) || sg[0] || {};
     const occ = {}; MO.forEach((mo) => { occ[mo] = S(gr[mo]); });
     try {
-      if (!dryRun) await R('staffQuartersUtilization').create({
+      const rec = {
         dateOfCompletion: toISO(sm['Date of completion']),
         isCompleted: S(sm['Whether staff quarters have been completed']) || 'No',
         numberOfQuarters: num(sm['No. of Staff Quarters'] || sm['No.of Staff Quarters']),
         occupancyDetails: S(sm['Occupancy Details']), occupancyData: JSON.stringify(occ), remark: S(sm['Remark']),
-      }, user);
+      };
+      if (dryRun) res.records.push(rec); else await R('staffQuartersUtilization').create(rec, user);
       res.inserted = 1;
     } catch (e) { res.failed = 1; res.failures.push({ reason: e.message }); }
     report.totals.inserted += res.inserted; report.totals.skipped += res.skipped; report.totals.failed += res.failed;
@@ -312,7 +321,7 @@ async function _messageChannels({ prisma, sheet, kvkId, user, dryRun, report }) 
   try {
     const m = sheet('View_Details_of_messages_s')[0];
     if (!m) return;
-    const res = { sheet: 'View_Details_of_messages_s', model: 'msgDetails', supported: true, present: true, inserted: 0, skipped: 0, failed: 0, failures: [] };
+    const res = { sheet: 'View_Details_of_messages_s', model: 'msgDetails', supported: true, present: true, inserted: 0, skipped: 0, failed: 0, failures: [], warnings: [], records: [] };
     if (kvkId) { const ex = await prisma.msgDetails.findFirst({ where: { kvkId } }); if (ex) { res.skipped = 1; report.forms.push(res); return; } }
     const grid = sheet('View_Details_of_messages_s - Re');
     const chans = [
@@ -329,7 +338,7 @@ async function _messageChannels({ prisma, sheet, kvkId, user, dryRun, report }) 
       d[c.p + 'Crop'] = S(cat['Crop']); d[c.p + 'Livestock'] = S(cat['Livestock']); d[c.p + 'Weather'] = S(cat['Weather']);
       d[c.p + 'Marketing'] = S(cat['Marketing']); d[c.p + 'Awareness'] = S(cat['Awareness']); d[c.p + 'OtherEnterprises'] = S(cat['Other Enterprises']);
     }
-    try { if (!dryRun) await R('msgDetails').create(d, user); res.inserted = 1; }
+    try { if (dryRun) res.records.push(d); else await R('msgDetails').create(d, user); res.inserted = 1; }
     catch (e) { res.failed = 1; res.failures.push({ reason: e.message }); }
     report.totals.inserted += res.inserted; report.totals.skipped += res.skipped; report.totals.failed += res.failed;
     report.forms.push(res);

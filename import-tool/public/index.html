@@ -35,6 +35,21 @@
   code { background:#f3f4f6; padding:1px 4px; border-radius:4px; }
   .hide { display: none; }
   details summary { cursor: pointer; color:#6b7280; font-size:13px; }
+  .form-acc { border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; }
+  .form-acc > summary { padding:10px 12px; font-size:13px; font-weight:600; color:#1f2937; list-style:none; }
+  .form-acc > summary::-webkit-details-marker { display:none; }
+  .form-acc > summary:before { content:'\25B8'; margin-right:8px; color:#9ca3af; }
+  .form-acc[open] > summary:before { content:'\25BE'; }
+  .form-acc .body { padding:0 12px 12px; }
+  .badge { font-size:11px; font-weight:600; padding:1px 7px; border-radius:999px; margin-left:6px; }
+  .badge.n { background:#eef2ff; color:#3730a3; }
+  .badge.w { background:#fef3c7; color:#92400e; }
+  .badge.f { background:#fee2e2; color:#991b1b; }
+  .scroll { overflow-x:auto; border:1px solid #f0f0f0; border-radius:6px; }
+  .map-table { font-size:12px; white-space:nowrap; margin-top:0; }
+  .map-table th { background:#f9fafb; position:sticky; top:0; }
+  .map-table td { max-width:260px; overflow:hidden; text-overflow:ellipsis; }
+  .map-table tr.warnrow td { background:#fffbeb; }
 </style>
 </head>
 <body>
@@ -59,13 +74,8 @@
     <h2><span class="step">2</span>What will be imported</h2>
     <p id="summary"></p>
     <div id="issues"></div>
-    <details>
-      <summary>See every form &amp; the fields detected</summary>
-      <table>
-        <thead><tr><th>Form (sheet)</th><th>Rows</th><th>Ready</th><th>Fields detected</th></tr></thead>
-        <tbody id="formsBody"></tbody>
-      </table>
-    </details>
+    <h3 style="font-size:14px;margin:18px 0 8px;">Review what will be saved <span class="muted" style="font-weight:400">— expand each form to check the exact field &amp; value for every row</span></h3>
+    <div id="forms"></div>
   </div>
 
   <!-- 3. Import -->
@@ -127,31 +137,40 @@ function renderResult(report, sheets) {
   const readyForms = report.forms.filter(f => f.present && f.inserted > 0).length;
   $('summary').innerHTML = '<b>' + report.totals.inserted + '</b> rows ready across <b>' + readyForms + '</b> forms.';
 
-  // issues
+  // issues + auto-adjustment summary
   const unmapped = report.unmappedSheets || [];
   const failing = report.forms.filter(f => (f.failed || 0) > 0 || f.supported === false);
+  const totalWarn = report.forms.reduce((s, f) => s + ((f.warnings || []).length), 0);
   let html = '';
-  if (!unmapped.length && !failing.length) {
-    html = '<div class="box ok">No mapping issues — everything maps cleanly. ✓</div>';
-  } else {
-    if (unmapped.length) html += '<div class="box warn"><b>Not imported — unsupported form(s):</b><ul>' + unmapped.map(s => '<li><code>' + s + '</code></li>').join('') + '</ul></div>';
-    if (failing.length) html += '<div class="box bad"><b>Rows that could not be saved:</b><ul>' + failing.map(f =>
-      '<li>' + f.sheet + (f.supported === false ? ' — not supported' : ' — ' + f.failed + ' row(s)') +
-      (f.failures || []).slice(0, 3).map(x => '<div class="muted">' + (x.row ? 'row ' + x.row + ': ' : '') + x.reason + '</div>').join('') + '</li>'
-    ).join('') + '</ul></div>';
-  }
+  if (unmapped.length) html += '<div class="box warn"><b>Not imported — unsupported form(s):</b><ul>' + unmapped.map(s => '<li><code>' + s + '</code></li>').join('') + '</ul></div>';
+  if (failing.length) html += '<div class="box bad"><b>Rows that could not be saved:</b><ul>' + failing.map(f =>
+    '<li>' + f.sheet + (f.supported === false ? ' — not supported' : ' — ' + f.failed + ' row(s)') +
+    (f.failures || []).slice(0, 3).map(x => '<div class="muted">' + (x.row ? 'row ' + x.row + ': ' : '') + x.reason + '</div>').join('') + '</li>'
+  ).join('') + '</ul></div>';
+  if (totalWarn) html += '<div class="box warn"><b>' + totalWarn + ' value(s) were auto-adjusted</b> (e.g. account type / season / project matched to the closest option). Expand the forms below to review — adjusted rows are highlighted.</div>';
+  if (!html) html = '<div class="box ok">No issues — everything maps cleanly. ✓</div>';
   if ((report.knownSkipped || []).length) html += '<p class="muted">Intentionally skipped (no table): ' + report.knownSkipped.join(', ') + '</p>';
   $('issues').innerHTML = html;
 
-  // per-form table with detected fields
-  const bySheet = {}; (sheets || []).forEach(s => bySheet[s.sheet] = s);
-  const seen = new Set();
-  $('formsBody').innerHTML = report.forms.filter(f => f.present).map(f => {
-    const sh = bySheet[f.sheet] || { rows: '', headers: [] };
-    const hk = f.sheet; const dupNote = seen.has(hk) ? ' <span class="muted">(2nd mapping)</span>' : ''; seen.add(hk);
-    const ready = '<span class="pill ' + (f.failed ? 'bad' : 'ok') + '">' + f.inserted + '</span>';
-    return '<tr><td>' + f.sheet + dupNote + '</td><td>' + (sh.rows || '') + '</td><td>' + ready + '</td>' +
-      '<td class="headers">' + (sh.headers || []).join(', ') + '</td></tr>';
+  // per-form mapping review — exactly what will be saved, field by field
+  const pretty = (k) => k.replace(/([A-Z])/g, ' $1').replace(/ Id\b/, '').replace(/^./, c => c.toUpperCase()).trim();
+  const cell = (v) => { if (v === null || v === undefined || v === '') return '<span class="muted">—</span>'; const s = String(v); return s.length > 140 ? s.slice(0, 140) + '…' : s; };
+  const forms = report.forms.filter(f => (f.records && f.records.length) || f.failed);
+  $('forms').innerHTML = forms.map(f => {
+    const recs = f.records || [], warns = f.warnings || [];
+    const cols = recs.length ? Object.keys(recs[0]) : [];
+    const warnByRow = {}; warns.forEach(w => { (warnByRow[w.row] = warnByRow[w.row] || []).push(w.msg); });
+    const badges = (recs.length ? '<span class="badge n">' + recs.length + ' rows</span>' : '') +
+      (warns.length ? '<span class="badge w">⚠ ' + warns.length + '</span>' : '') +
+      (f.failed ? '<span class="badge f">✗ ' + f.failed + '</span>' : '');
+    const warnList = warns.length ? '<div class="box warn" style="margin:8px 0">' + warns.map(w => '<div>row ' + w.row + ': ' + w.msg + '</div>').join('') + '</div>' : '';
+    const head = '<tr><th>#</th>' + cols.map(c => '<th>' + pretty(c) + '</th>').join('') + '</tr>';
+    const rows = recs.map((d, idx) => {
+      const rn = idx + 1; const cls = warnByRow[rn] ? ' class="warnrow"' : '';
+      return '<tr' + cls + '><td>' + rn + '</td>' + cols.map(c => '<td title="' + String(d[c] == null ? '' : d[c]).replace(/"/g, '&quot;') + '">' + cell(d[c]) + '</td>').join('') + '</tr>';
+    }).join('');
+    return '<details class="form-acc"><summary>' + f.sheet + badges + '</summary><div class="body">' + warnList +
+      '<div class="scroll"><table class="map-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div></div></details>';
   }).join('');
 
   $('resultCard').classList.remove('hide');
