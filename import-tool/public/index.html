@@ -167,6 +167,15 @@ function renderResult(report, sheets) {
 // ---- editable per-form mapping ----
 let IMP = { forms: [] };
 let MASTERS = {};   // { seasonId:[{value,label}], financialProjectId:[...], fundingAgencyId:[...], items:[...] }
+// dropdowns the NEW-SITE form hardcodes (stored as plain text), keyed by model -> column.
+// Mirrors the exact options from the new site's form so blanks show the same picker.
+const FORM_DROPDOWNS = {
+  districtLevelData: {
+    season: [{ value: 'Kharif', label: 'Kharif' }, { value: 'Rabi', label: 'Rabi' }, { value: 'Summer', label: 'Summer' }, { value: 'Annual', label: 'Annual' }],
+    type: [{ value: 'Field Crop', label: 'Field Crop' }, { value: 'Horticulture Crop', label: 'Horticulture Crop' }],
+  },
+};
+function dropOpts(model, col) { return (FORM_DROPDOWNS[model] && FORM_DROPDOWNS[model][col]) || MASTERS[col] || null; }
 const pretty = (k) => k.replace(/([A-Z])/g, ' $1').replace(/ Id\b/, '').replace(/^./, c => c.toUpperCase()).trim();
 const cell = (v) => { if (v === null || v === undefined || v === '') return '<span class="muted">—</span>'; const s = String(v); return s.length > 140 ? s.slice(0, 140) + '…' : s; };
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -212,7 +221,7 @@ function removeRow(fi, ri) { const f = IMP.forms[fi]; f.records.splice(ri, 1); r
 // render one cell: a real dropdown for master fields, else an editable box (edit mode);
 // in view mode, master fields show the readable label instead of the id number.
 function renderCell(fi, ri, c, d) {
-  const opts = MASTERS[c];
+  const opts = dropOpts(IMP.forms[fi].model, c);
   const v = d[c];
   if (IMP.forms[fi].editing) {
     if (opts) {
@@ -236,7 +245,7 @@ function fillDown(fi, idx) { const f = IMP.forms[fi]; const col = f.cols[idx]; i
 function fillEmpties(fi) {
   const f = IMP.forms[fi];
   f.cols.forEach(col => {
-    if (MASTERS[col]) return;
+    if (dropOpts(f.model, col)) return;
     const t = (f.fieldTypes && f.fieldTypes[col]) || '';
     if (t === 'DateTime') return;
     let numeric = ['Int', 'BigInt', 'Float', 'Decimal'].includes(t);
