@@ -201,7 +201,7 @@ function renderForms() {
 }
 
 function toggleEdit(e, fi) { e.preventDefault(); e.stopPropagation(); IMP.forms[fi].editing = !IMP.forms[fi].editing; renderForms(); }
-function addColumn(fi) { const name = prompt('New field name (must match a field on this form to be saved):'); if (!name) return; const f = IMP.forms[fi]; if (!f.cols.includes(name)) f.cols.push(name); f.records.forEach(r => { if (!(name in r)) r[name] = ''; }); renderForms(); }
+function addColumn(fi) { const name = prompt('New field name (must match a field on this form to be saved):'); if (!name) return; const f = IMP.forms[fi]; if (!f.cols.includes(name)) f.cols.push(name); (f.addedCols = f.addedCols || []).push(name); f.records.forEach(r => { if (!(name in r)) r[name] = ''; }); renderForms(); }
 // live-edit cells via delegation (no re-render -> no focus loss)
 $('forms').addEventListener('input', (e) => {
   const t = e.target; if (!t.classList || !t.classList.contains('ed')) return;
@@ -225,12 +225,17 @@ commitBtn.onclick = async () => {
   if (!confirm('Import this data into the selected KVK? This writes to the live database.')) return;
   commitBtn.disabled = true; commitBtn.textContent = 'Importing…';
   try {
-    const forms = IMP.forms.map(f => ({ model: f.model, sheet: f.sheet, records: f.records }));
+    const forms = IMP.forms.map(f => ({ model: f.model, sheet: f.sheet, records: f.records, addedCols: f.addedCols || [] }));
     const r = await fetch('/api/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kvkId: Number(kvkId), forms }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Import failed');
     const t = j.report.totals;
-    $('commitResult').innerHTML = '<div class="box ok">✅ Imported — <b>' + t.inserted + '</b> new rows, ' + t.skipped + ' already present, ' + t.failed + ' failed. It now shows on the site.</div>';
+    let extra = '';
+    (j.report.forms || []).forEach(f => {
+      if (f.note) extra += '<div class="muted" style="margin-top:4px">' + f.sheet + ': ' + f.note + '</div>';
+      if (f.failed) extra += '<div style="color:#991b1b;margin-top:4px">' + f.sheet + ': ' + f.failed + ' failed — ' + (f.failures || []).map(x => x.reason).join('; ') + '</div>';
+    });
+    $('commitResult').innerHTML = '<div class="box ' + (t.failed ? 'bad' : 'ok') + '">' + (t.failed ? '⚠️' : '✅') + ' Imported — <b>' + t.inserted + '</b> new rows, ' + t.skipped + ' already present, ' + t.failed + ' failed. It now shows on the site.' + extra + '</div>';
   } catch (e) { showError(e.message); }
   finally { commitBtn.disabled = false; commitBtn.textContent = 'Import into database'; }
 };

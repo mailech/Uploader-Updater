@@ -8,6 +8,30 @@
 // Both return a structured report (per-form counts + unmapped sheets + row-level failures).
 
 const R = (name) => require('../../repositories/forms/' + name + 'Repository.js');
+const { Prisma } = require('@prisma/client');
+
+// schema lookup: real scalar columns of a model (so a user-added column only saves if it's real)
+function modelMeta(accessor) {
+  try {
+    const name = accessor.charAt(0).toUpperCase() + accessor.slice(1);
+    const m = Prisma.dmmf.datamodel.models.find((x) => x.name === name);
+    if (!m) return null;
+    const scalars = {}; let idField = null;
+    for (const fld of m.fields) { if (fld.isId) idField = fld.name; if (fld.kind === 'scalar') scalars[fld.name] = fld.type; }
+    return { idField, scalars };
+  } catch (e) { return null; }
+}
+function coerceVal(type, val) {
+  if (val === '' || val == null) return undefined;
+  switch (type) {
+    case 'DateTime': { const d = new Date(val); return isNaN(d.getTime()) ? undefined : d; }
+    case 'Int': case 'BigInt': { const n = parseInt(String(val).replace(/,/g, ''), 10); return isNaN(n) ? undefined : n; }
+    case 'Float': case 'Decimal': { const n = parseFloat(String(val).replace(/,/g, '')); return isNaN(n) ? undefined : n; }
+    case 'Boolean': return /^(true|1|yes)$/i.test(String(val));
+    case 'Json': try { return JSON.parse(val); } catch (e) { return String(val); }
+    default: return String(val);
+  }
+}
 
 // ---------- pure helpers (no state) ----------
 const S = (v) => String(v == null ? '' : v).trim();
@@ -389,12 +413,22 @@ async function commitRecords({ prisma, kvkId, forms }) {
       report.forms.push(res); continue;
     }
 
+    const meta = modelMeta(model);
+    const addedCols = (inForm.addedCols || []).filter((c) => meta && meta.scalars[c] !== undefined);
+    if ((inForm.addedCols || []).length && !addedCols.length) res.note = 'added column(s) are not real fields on this form — ignored';
+
     let i = 0;
     for (const d of recs) {
       i++;
       try {
         if (keyFn) { const ex = await prisma[model].findFirst({ where: keyFn(d) }); if (ex) { res.skipped++; continue; } }
-        await createFn(d);
+        const created = await createFn(d);
+        // persist any user-added columns that are real DB fields (repos only write their own fields)
+        if (created && addedCols.length && meta && meta.idField && created[meta.idField] != null) {
+          const upd = {};
+          for (const col of addedCols) { const cv = coerceVal(meta.scalars[col], d[col]); if (cv !== undefined) upd[col] = cv; }
+          if (Object.keys(upd).length) await prisma[model].update({ where: { [meta.idField]: created[meta.idField] }, data: upd });
+        }
         res.inserted++;
       } catch (e) { res.failed++; if (res.failures.length < 8) res.failures.push({ row: i, reason: e.message }); }
     }
