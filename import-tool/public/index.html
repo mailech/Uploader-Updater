@@ -187,7 +187,10 @@ function renderForms() {
     const editBtn = '<button class="lnk" onclick="toggleEdit(event,' + fi + ')">' + (f.editing ? '✓ done' : '✎ edit') + '</button>';
     const warnByRow = {}; f.warnings.forEach(w => { (warnByRow[w.row] = warnByRow[w.row] || []).push(w.msg); });
     const warnList = f.warnings.length ? '<div class="box warn" style="margin:8px 0">' + f.warnings.map(w => 'row ' + w.row + ': ' + w.msg).join('<br>') + '</div>' : '';
-    const head = '<tr><th>#</th>' + f.cols.map(c => '<th>' + pretty(c) + '</th>').join('') + '</tr>';
+    const head = '<tr><th>#</th>' + f.cols.map((c, idx) => {
+      const removable = f.editing && f.addedCols && f.addedCols.includes(c);
+      return '<th>' + pretty(c) + (removable ? ' <button class="lnk" title="remove this column" onclick="removeColumn(' + fi + ',' + idx + ')">✕</button>' : '') + '</th>';
+    }).join('') + '</tr>';
     const rows = f.records.map((d, ri) => {
       const cls = warnByRow[ri + 1] ? ' class="warnrow"' : '';
       const cells = f.cols.map(c => f.editing
@@ -202,6 +205,7 @@ function renderForms() {
 
 function toggleEdit(e, fi) { e.preventDefault(); e.stopPropagation(); IMP.forms[fi].editing = !IMP.forms[fi].editing; renderForms(); }
 function addColumn(fi) { const name = prompt('New field name (must match a field on this form to be saved):'); if (!name) return; const f = IMP.forms[fi]; if (!f.cols.includes(name)) f.cols.push(name); (f.addedCols = f.addedCols || []).push(name); f.records.forEach(r => { if (!(name in r)) r[name] = ''; }); renderForms(); }
+function removeColumn(fi, idx) { const f = IMP.forms[fi]; const name = f.cols[idx]; if (!name) return; f.cols.splice(idx, 1); if (f.addedCols) f.addedCols = f.addedCols.filter(c => c !== name); f.records.forEach(r => { delete r[name]; }); renderForms(); }
 // live-edit cells via delegation (no re-render -> no focus loss)
 $('forms').addEventListener('input', (e) => {
   const t = e.target; if (!t.classList || !t.classList.contains('ed')) return;
