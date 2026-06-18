@@ -196,7 +196,8 @@ function renderForms() {
       const cells = f.cols.map(c => f.editing
         ? '<td><input class="ed" data-fi="' + fi + '" data-ri="' + ri + '" data-col="' + c + '" value="' + esc(d[c]) + '"></td>'
         : '<td title="' + esc(d[c]) + '">' + cell(d[c]) + '</td>').join('');
-      return '<tr' + cls + '><td>' + (ri + 1) + '</td>' + cells + '</tr>';
+      const num = (ri + 1) + (f.editing ? ' <button class="lnk" title="delete this row" onclick="removeRow(' + fi + ',' + ri + ')">✕</button>' : '');
+      return '<tr' + cls + '><td style="white-space:nowrap">' + num + '</td>' + cells + '</tr>';
     }).join('');
     const addCol = f.editing ? '<div style="margin-top:8px"><button class="lnk" onclick="addColumn(' + fi + ')">+ add column</button> <span class="muted" style="font-size:11px">(only fields that exist on this form get saved)</span></div>' : '';
     return '<details class="form-acc"' + (f.editing ? ' open' : '') + '><summary>' + f.sheet + badges + ' ' + editBtn + '</summary><div class="body">' + warnList + '<div class="scroll"><table class="map-table"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>' + addCol + '</div></details>';
@@ -206,6 +207,7 @@ function renderForms() {
 function toggleEdit(e, fi) { e.preventDefault(); e.stopPropagation(); IMP.forms[fi].editing = !IMP.forms[fi].editing; renderForms(); }
 function addColumn(fi) { const name = prompt('New field name (must match a field on this form to be saved):'); if (!name) return; const f = IMP.forms[fi]; if (!f.cols.includes(name)) f.cols.push(name); (f.addedCols = f.addedCols || []).push(name); f.records.forEach(r => { if (!(name in r)) r[name] = ''; }); renderForms(); }
 function removeColumn(fi, idx) { const f = IMP.forms[fi]; const name = f.cols[idx]; if (!name) return; f.cols.splice(idx, 1); if (f.addedCols) f.addedCols = f.addedCols.filter(c => c !== name); f.records.forEach(r => { delete r[name]; }); renderForms(); }
+function removeRow(fi, ri) { const f = IMP.forms[fi]; f.records.splice(ri, 1); renderForms(); }
 // live-edit cells via delegation (no re-render -> no focus loss)
 $('forms').addEventListener('input', (e) => {
   const t = e.target; if (!t.classList || !t.classList.contains('ed')) return;
