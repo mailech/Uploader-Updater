@@ -1,0 +1,970 @@
+const prisma = require('../../config/prisma.js');
+
+/**
+ * Other Masters Repository
+ * Optimized repository for Season, Sanctioned Post, and Year master data operations
+ * Reusable pattern for simple master entities
+ */
+
+// Entity configuration mapping
+const ENTITY_CONFIG = {
+    'seasons': {
+        model: 'season',
+        idField: 'seasonId',
+        nameField: 'seasonName',
+        includes: {
+            _count: {
+                select: {
+                    cfldCrops: true,
+                    craCropingSystems: true,
+                    craFarmingSystems: true,
+                },
+            },
+        },
+    },
+    'sanctioned-posts': {
+        model: 'sanctionedPost',
+        idField: 'sanctionedPostId',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        nameField: 'postName',
+        includes: {
+            _count: {
+                select: {
+                    staff: true,
+                },
+            },
+        },
+    },
+    // Employee Masters
+    'staff-category': {
+        model: 'staffCategoryMaster',
+        idField: 'staffCategoryId',
+        nameField: 'categoryName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    staff: true,
+                },
+            },
+        },
+    },
+    'pay-level': {
+        model: 'payLevelMaster',
+        idField: 'payLevelId',
+        nameField: 'levelName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    staff: true,
+                },
+            },
+        },
+    },
+    'pay-scale': {
+        model: 'payScaleMaster',
+        idField: 'payScaleId',
+        nameField: 'scaleName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    staff: true,
+                },
+            },
+        },
+    },
+    'discipline': {
+        model: 'discipline',
+        idField: 'disciplineId',
+        nameField: 'disciplineName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    staff: true,
+                },
+            },
+        },
+    },
+    'asset-funding-source': {
+        model: 'assetFundingSourceMaster',
+        idField: 'assetFundingSourceId',
+        nameField: 'name',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    equipments: true,
+                    equipmentDetails: true,
+                    vehicleDetails: true,
+                },
+            },
+        },
+    },
+    'equipment-type': {
+        model: 'equipmentTypeMaster',
+        idField: 'equipmentTypeId',
+        nameField: 'name',
+        allowDeleteWithDependents: true, // onDelete: SetNull on equipments; Cascade on child equipmentMasters
+        includes: {
+            _count: {
+                select: {
+                    equipments: true,
+                    equipmentMasters: true,
+                },
+            },
+        },
+    },
+    'equipment-master': {
+        model: 'equipmentMaster',
+        idField: 'equipmentMasterId',
+        nameField: 'name',
+        parentField: 'equipmentTypeId',
+        allowDeleteWithDependents: true, // onDelete: SetNull on equipments
+        includes: {
+            equipmentType: { select: { equipmentTypeId: true, name: true } },
+            _count: {
+                select: {
+                    equipments: true,
+                },
+            },
+        },
+    },
+    // Extension Masters
+    'extension-activity-type': {
+        model: 'fldActivity',
+        idField: 'activityId',
+        nameField: 'activityName',
+        includes: {
+            _count: {
+                select: {
+                    extensions: true,
+                    kvkExtensionActivities: true,
+                },
+            },
+        },
+    },
+    'other-extension-activity-type': {
+        model: 'otherExtensionActivityType',
+        idField: 'activityTypeId',
+        nameField: 'activityName',
+        includes: {
+            _count: {
+                select: {
+                    otherExtensionActivities: true,
+                },
+            },
+        },
+    },
+    'important-day': {
+        model: 'importantDay',
+        idField: 'importantDayId',
+        nameField: 'dayName',
+        includes: {
+            _count: {
+                select: {
+                    celebrations: true,
+                },
+            },
+        },
+    },
+    // Training Masters
+    'training-clientele': {
+        model: 'clienteleMaster',
+        idField: 'clienteleId',
+        nameField: 'name',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    trainings: true,
+                },
+            },
+        },
+    },
+    'funding-source': {
+        model: 'fundingSourceMaster',
+        idField: 'fundingSourceId',
+        nameField: 'name',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    trainings: true,
+                    kvkOfts: true,
+                },
+            },
+        },
+    },
+    // Other Masters
+    'crop-type': {
+        model: 'cropType',
+        idField: 'typeId',
+        nameField: 'typeName',
+        includes: {
+            _count: {
+                select: {
+                    cfldCrops: true,
+                },
+            },
+        },
+    },
+    'budget-item': {
+        model: 'budgetItem',
+        idField: 'budgetItemId',
+        nameField: 'itemName',
+        includes: {
+            _count: {
+                select: {
+                    utilizations: true,
+                },
+            },
+        },
+    },
+    'infrastructure-master': {
+        model: 'kvkInfrastructureMaster',
+        idField: 'infraMasterId',
+        nameField: 'name',
+        includes: {
+            _count: {
+                select: {
+                    infrastructures: true,
+                },
+            },
+        },
+    },
+    // Soil Water Testing Masters
+    'soil-water-analysis': {
+        model: 'soilWaterAnalysis',
+        idField: 'soilWaterAnalysisId',
+        nameField: 'analysisName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured
+        includes: {
+            _count: {
+                select: {
+                    analysis: true,
+                    equipments: true,
+                },
+            },
+        },
+    },
+    // NARI Masters
+    'nari-crop-category': {
+        model: 'cropCategory',
+        idField: 'cropCategoryId',
+        nameField: 'name',
+        includes: {
+            _count: {
+                select: {
+                    nariBioFortifiedCrops: true,
+                },
+            },
+        },
+    },
+    'nari-activity': {
+        model: 'nariActivity',
+        idField: 'nariActivityId',
+        nameField: 'activityName',
+        includes: {
+            _count: {
+                select: {
+                    nariNutritionalGardens: true,
+                    nariBioFortifiedCrops: true,
+                    nariValueAdditions: true,
+                    nariTrainingProgrammes: true,
+                    nariExtensionActivities: true,
+                },
+            },
+        },
+    },
+    'nari-nutrition-garden-type': {
+        model: 'nutritionGardenType',
+        idField: 'nutritionGardenTypeId',
+        nameField: 'name',
+        includes: {
+            _count: {
+                select: {
+                    nariNutritionalGardens: true,
+                },
+            },
+        },
+    },
+    'nicra-category': {
+        model: 'nicraCategory',
+        idField: 'nicraCategoryId',
+        nameField: 'categoryName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured on nicra_details
+        includes: {
+            _count: {
+                select: {
+                    nicraDetails: true,
+                    subCategories: true,
+                },
+            },
+        },
+    },
+    'nicra-sub-category': {
+        model: 'nicraSubCategory',
+        idField: 'nicraSubCategoryId',
+        nameField: 'subCategoryName',
+        allowDeleteWithDependents: true, // onDelete: SetNull configured on nicra_details
+        parentField: 'nicraCategoryId',
+        includes: {
+            category: {
+                select: {
+                    nicraCategoryId: true,
+                    categoryName: true,
+                },
+            },
+            _count: {
+                select: {
+                    nicraDetails: true,
+                },
+            },
+        },
+    },
+    'nicra-seed-bank-fodder-bank': {
+        model: 'nicraSeedBankFodderBankMaster',
+        idField: 'nicraSeedBankFodderBankId',
+        nameField: 'name',
+        includes: {},
+    },
+    'nicra-dignitary-type': {
+        model: 'nicraDignitaryTypeMaster',
+        idField: 'nicraDignitaryTypeId',
+        nameField: 'name',
+        includes: {},
+    },
+    'nicra-pi-type': {
+        model: 'nicraPiTypeMaster',
+        idField: 'nicraPiTypeId',
+        nameField: 'name',
+        includes: {},
+    },
+    'impact-specific-area-master': {
+        model: 'impactSpecificAreaMaster',
+        idField: 'specificAreaId',
+        nameField: 'specificAreaName',
+        includes: {},
+    },
+    'enterprise-type': {
+        model: 'enterpriseTypeMaster',
+        idField: 'enterpriseTypeId',
+        nameField: 'enterpriseTypeName',
+        includes: {},
+    },
+    'account-type': {
+        model: 'accountTypeMaster',
+        idField: 'accountTypeId',
+        nameField: 'accountType',
+        includes: {},
+    },
+    'programme-type': {
+        model: 'programmeTypeMaster',
+        idField: 'programmeTypeId',
+        nameField: 'programmeType',
+        includes: {},
+    },
+    'ppv-fra-training-type': {
+        model: 'ppvFraTrainingTypeMaster',
+        idField: 'typeId',
+        nameField: 'typeName',
+        includes: {},
+    },
+    'dignitary-type': {
+        model: 'dignitaryType',
+        idField: 'dignitaryTypeId',
+        nameField: 'name',
+        includes: {
+            _count: {
+                select: {
+                    visitors: true,
+                },
+            },
+        },
+    },
+    'financial-project': {
+        model: 'financialProject',
+        idField: 'financialProjectId',
+        nameField: 'projectName',
+        includes: {
+            fundingAgency: {
+                select: {
+                    fundingAgencyId: true,
+                    agencyName: true,
+                },
+            },
+            _count: {
+                select: {
+                    projectBudgets: true,
+                },
+            },
+        },
+    },
+    'funding-agency': {
+        model: 'fundingAgency',
+        idField: 'fundingAgencyId',
+        nameField: 'agencyName',
+        includes: {
+            _count: {
+                select: {
+                    financialProjects: true,
+                    projectBudgets: true,
+                },
+            },
+        },
+    },
+    'vehicle-present-status': {
+        model: 'vehiclePresentStatusMaster',
+        idField: 'vehicleStatusId',
+        nameField: 'statusLabel',
+        extraFields: ['statusCode', 'hideInNextYear', 'isActive'],
+        includes: {
+            _count: {
+                select: { vehicleDetails: true },
+            },
+        },
+    },
+    'equipment-present-status': {
+        model: 'equipmentPresentStatusMaster',
+        idField: 'equipmentStatusId',
+        nameField: 'statusLabel',
+        extraFields: ['statusCode', 'hideInNextYear', 'isActive'],
+        includes: {
+            _count: {
+                select: { equipmentDetails: true },
+            },
+        },
+    },
+};
+
+/**
+ * Get entity configuration
+ * @param {string} entityName - Entity name
+ * @returns {object} Entity configuration
+ */
+function getEntityConfig(entityName) {
+    const config = ENTITY_CONFIG[entityName];
+    if (!config) {
+        throw new Error(`Unknown entity type: ${entityName}`);
+    }
+    return config;
+}
+
+/**
+ * Generic find all method with pagination, sorting and filtering
+ */
+const findAll = async (entityType, options = {}) => {
+    const config = getEntityConfig(entityType);
+
+    const { page = 1, limit = 100, search = '', sortBy = 'id', sortOrder = 'asc' } = options;
+    const skip = (page - 1) * limit;
+    const take = parseInt(limit);
+
+    // Build filtering
+    const where = {};
+    if (search) {
+        where[config.nameField] = {
+            contains: search,
+            mode: 'insensitive',
+        };
+    }
+
+    // Build sorting
+    let actualSortBy = sortBy;
+    if (sortBy === 'id') actualSortBy = config.idField;
+    if (sortBy === 'name') actualSortBy = config.nameField;
+
+    try {
+        const [data, total] = await Promise.all([
+            prisma[config.model].findMany({
+                where,
+                include: config.includes,
+                skip,
+                take,
+                orderBy: {
+                    [actualSortBy]: sortOrder,
+                },
+            }),
+            prisma[config.model].count({ where }),
+        ]);
+
+        return {
+            data,
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(total / limit),
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Generic find by ID
+ */
+const findById = async (entityType, id) => {
+    const config = getEntityConfig(entityType);
+    
+    // Validate ID
+    if (id === undefined || id === null || id === '') {
+        throw new Error(`Missing ID field: ${config.idField}`);
+    }
+    
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+        throw new Error(`Invalid ID: ${id}. Expected a number.`);
+    }
+    
+    return prisma[config.model].findUnique({
+        where: { [config.idField]: parsedId },
+        include: config.includes,
+    });
+};
+
+/**
+ * Fix PostgreSQL sequence for a given model
+ * This is needed when records are inserted with explicit IDs and the sequence gets out of sync
+ */
+const fixSequence = async (modelName, idField, tableName, columnName) => {
+    try {
+        // Construct sequence name: {table_name}_{column_name}_seq
+        const sequenceName = `${tableName}_${columnName}_seq`;
+        
+        // Get the current max ID using raw SQL
+        const maxIdResult = await prisma.$queryRawUnsafe(
+            `SELECT COALESCE(MAX(${columnName}), 0) as max_id FROM ${tableName}`
+        );
+        
+        const maxId = maxIdResult[0]?.max_id || 0;
+        const nextId = maxId > 0 ? maxId + 1 : 1;
+        
+        // Reset the sequence to the next available ID
+        // setval(sequence_name, value, is_called)
+        // is_called = false means the next nextval() will return the specified value
+        await prisma.$executeRawUnsafe(
+            `SELECT setval('${sequenceName}', ${nextId}, false)`
+        );
+        
+        console.log(`Fixed sequence ${sequenceName} to ${nextId}`);
+        return nextId;
+    } catch (seqError) {
+        console.error(`Error fixing sequence for ${modelName}:`, seqError);
+        // Don't throw - let the original error be thrown instead
+        return null;
+    }
+};
+
+/**
+ * Generic create
+ */
+const create = async (entityType, data) => {
+    const config = getEntityConfig(entityType);
+    
+    // Build sanitized data object with only allowed fields
+    // For simple masters, we only want the name field
+    const sanitizedData = {};
+    
+    // Explicitly exclude ID fields to prevent conflicts
+    // Never include the ID field - let the database auto-increment handle it
+    const idFieldVariations = [
+        config.idField,
+        'id',
+        '_id',
+        config.idField.toLowerCase(),
+        config.idField.replace(/([A-Z])/g, '_$1').toLowerCase(),
+    ];
+    
+    // Validate and include name field
+    if (data[config.nameField]) {
+        const nameValue = String(data[config.nameField]).trim();
+        if (nameValue === '') {
+            throw new Error(`${config.nameField} is required and cannot be empty`);
+        }
+        sanitizedData[config.nameField] = nameValue;
+    } else {
+        throw new Error(`${config.nameField} is required`);
+    }
+
+    if (config.extraFields) {
+        for (const field of config.extraFields) {
+            if (data[field] !== undefined) {
+                sanitizedData[field] = data[field];
+            }
+        }
+    }
+
+    // Optional parent field support (for dependent masters like NICRA sub-category)
+    if (config.parentField) {
+        const parentVal = data[config.parentField];
+        if (parentVal === undefined || parentVal === null || parentVal === '') {
+            throw new Error(`${config.parentField} is required`);
+        }
+        const parsedParentVal = parseInt(parentVal, 10);
+        if (isNaN(parsedParentVal)) {
+            throw new Error(`Invalid ${config.parentField}`);
+        }
+        sanitizedData[config.parentField] = parsedParentVal;
+    }
+    
+    // Ensure no ID field is accidentally included
+    for (const idField of idFieldVariations) {
+        if (sanitizedData[idField] !== undefined) {
+            delete sanitizedData[idField];
+        }
+        // Also check the original data and remove any ID fields
+        if (data[idField] !== undefined) {
+            delete data[idField];
+        }
+    }
+    
+    // Proactively fix sequence for entities that are known to have seeded data
+    // This prevents sequence out-of-sync issues
+    const entitiesWithSeededData = [
+        'infrastructure-master',
+        'staff-category',
+        'pay-level',
+        'discipline',
+        'sanctioned-posts',
+        'seasons',
+        'crop-type',
+        'important-day',
+        'soil-water-analysis',
+        'enterprise-type',
+        'account-type',
+        'programme-type',
+        'ppv-fra-training-type',
+        'dignitary-type',
+        'financial-project',
+    ];
+    
+    if (entitiesWithSeededData.includes(entityType)) {
+        const tableName = entityType === 'sanctioned-posts' ? 'sanctioned_post' :
+                         entityType === 'seasons' ? 'season' :
+                         entityType === 'staff-category' ? 'staff_category_master' :
+                         entityType === 'pay-level' ? 'pay_level_master' :
+                         entityType === 'discipline' ? 'discipline' :
+                         entityType === 'extension-activity-type' ? 'fld_activity' :
+                         entityType === 'other-extension-activity-type' ? 'other_extension_activity_type' :
+                         entityType === 'important-day' ? 'important_day' :
+                         entityType === 'training-clientele' ? 'clientele_master' :
+                         entityType === 'funding-source' ? 'funding_source_master' :
+                         entityType === 'crop-type' ? 'crop_type' :
+                         entityType === 'infrastructure-master' ? 'kvk_infrastructure_master' :
+                         entityType === 'soil-water-analysis' ? 'soil_water_analysis' :
+                         entityType === 'enterprise-type' ? 'enterprise_type_master' :
+                         entityType === 'account-type' ? 'account_type_master' :
+                         entityType === 'programme-type' ? 'programme_type_master' : 
+                         entityType === 'ppv-fra-training-type' ? 'ppv_fra_training_type_master' :
+                         entityType === 'dignitary-type' ? 'dignitary_type' : 
+                         entityType === 'financial-project' ? 'financial_project' : null;
+        
+        if (tableName) {
+            const columnName = config.idField.replace(/([A-Z])/g, '_$1').toLowerCase();
+            // Proactively fix sequence before creating
+            await fixSequence(config.model, config.idField, tableName, columnName);
+        }
+    }
+    
+    try {
+        // Verify the model exists in Prisma client
+        if (!prisma[config.model]) {
+            throw new Error(`Prisma model '${config.model}' not found. Available models: ${Object.keys(prisma).filter(k => !k.startsWith('_') && typeof prisma[k] === 'object').join(', ')}`);
+        }
+        
+        return await prisma[config.model].create({
+            data: sanitizedData,
+        });
+    } catch (error) {
+        // If it's a unique constraint error, provide better message
+        if (error.code === 'P2002') {
+            const field = error.meta?.target?.[0] || 'unknown field';
+            const fieldName = error.meta?.target?.[0] || 'unknown';
+            
+            // Check if it's an ID field conflict (sequence out of sync issue)
+            // The field name from Prisma error is the database column name (snake_case)
+            const dbColumnName = config.idField.replace(/([A-Z])/g, '_$1').toLowerCase();
+            const isIdField = idFieldVariations.some(idField => {
+                const idFieldDbName = idField.replace(/([A-Z])/g, '_$1').toLowerCase();
+                return field === idField || 
+                       field === idFieldDbName ||
+                       field === dbColumnName ||
+                       field.toLowerCase() === dbColumnName;
+            }) || field === dbColumnName || field.toLowerCase() === dbColumnName;
+            
+            if (isIdField) {
+                // This is a sequence synchronization issue in PostgreSQL
+                // Try to automatically fix the sequence
+                const tableName = entityType === 'sanctioned-posts' ? 'sanctioned_post' :
+                                 entityType === 'seasons' ? 'season' :
+                                 entityType === 'staff-category' ? 'staff_category_master' :
+                                 entityType === 'pay-level' ? 'pay_level_master' :
+                                 entityType === 'discipline' ? 'discipline' :
+                                 entityType === 'extension-activity-type' ? 'fld_activity' :
+                                 entityType === 'other-extension-activity-type' ? 'other_extension_activity_type' :
+                                 entityType === 'important-day' ? 'important_day' :
+                                 entityType === 'training-clientele' ? 'clientele_master' :
+                                 entityType === 'funding-source' ? 'funding_source_master' :
+                                 entityType === 'crop-type' ? 'crop_type' :
+                                 entityType === 'infrastructure-master' ? 'kvk_infrastructure_master' :
+                                 entityType === 'soil-water-analysis' ? 'soil_water_analysis' : null; 
+                
+                const columnName = config.idField.replace(/([A-Z])/g, '_$1').toLowerCase();
+                
+                if (tableName) {
+                    console.log(`Attempting to fix sequence for ${config.model} (table: ${tableName}, column: ${columnName})...`);
+                    const fixed = await fixSequence(config.model, config.idField, tableName, columnName);
+                    
+                    if (fixed !== null) {
+                        // Retry the create operation after fixing the sequence
+                        console.log(`Sequence fixed to ${fixed}, retrying create operation...`);
+                        try {
+                            return await prisma[config.model].create({
+                                data: sanitizedData,
+                            });
+                        } catch (retryError) {
+                            // If retry still fails, provide a more specific error
+                            console.error('Retry after sequence fix failed:', retryError);
+                            const retryErrorMsg = new Error(
+                                `Failed to create ${entityType} after fixing sequence. Please try again or contact support.`
+                            );
+                            retryErrorMsg.statusCode = 500;
+                            retryErrorMsg.code = 'SEQUENCE_FIX_RETRY_FAILED';
+                            throw retryErrorMsg;
+                        }
+                    } else {
+                        // Auto-fix failed
+                        console.error(`Failed to automatically fix sequence for ${config.model}`);
+                    }
+                }
+                
+                // If auto-fix failed or table name is unknown, provide helpful error message
+                const betterError = new Error(
+                    `Database sequence out of sync for ${config.model}. Please contact support to fix the sequence manually.`
+                );
+                betterError.statusCode = 500;
+                betterError.code = 'SEQUENCE_OUT_OF_SYNC';
+                throw betterError;
+            }
+            
+            // Check if it's a name field conflict
+            const isNameField = field === config.nameField || 
+                               field === config.nameField.replace(/([A-Z])/g, '_$1').toLowerCase() ||
+                               field === 'post_name' && config.nameField === 'postName';
+            
+            if (isNameField) {
+                const betterError = new Error(`${config.nameField} '${sanitizedData[config.nameField]}' already exists`);
+                betterError.statusCode = 409;
+                throw betterError;
+            }
+
+            // Any other unique-field conflict (e.g. status code) — friendly message
+            // instead of leaking the raw Prisma error to the UI.
+            const readable = String(field).replace(/_/g, ' ').replace(/\bid\b/i, '').trim() || 'value';
+            const dupError = new Error(`A record with this ${readable} already exists`);
+            dupError.statusCode = 409;
+            throw dupError;
+        }
+
+        throw error;
+    }
+};
+
+/**
+ * Generic update
+ */
+const update = async (entityType, id, data) => {
+    const config = getEntityConfig(entityType);
+
+    const numericId = parseInt(id, 10);
+    if (Number.isNaN(numericId)) {
+        const e = new Error('Invalid record id. Please reopen the record and try again.');
+        e.statusCode = 400;
+        throw e;
+    }
+
+    // Build sanitized data object with only allowed fields
+    const sanitizedData = {};
+    
+    // Only include the name field if provided
+    if (data[config.nameField] !== undefined) {
+        const nameValue = String(data[config.nameField]).trim();
+        if (nameValue === '') {
+            throw new Error(`${config.nameField} cannot be empty`);
+        }
+        sanitizedData[config.nameField] = nameValue;
+    }
+
+    if (config.extraFields) {
+        for (const field of config.extraFields) {
+            if (data[field] !== undefined) {
+                sanitizedData[field] = data[field];
+            }
+        }
+    }
+
+    if (config.parentField && data[config.parentField] !== undefined) {
+        const parentVal = data[config.parentField];
+        if (parentVal === null || parentVal === '') {
+            throw new Error(`${config.parentField} cannot be empty`);
+        }
+        const parsedParentVal = parseInt(parentVal, 10);
+        if (isNaN(parsedParentVal)) {
+            throw new Error(`Invalid ${config.parentField}`);
+        }
+        sanitizedData[config.parentField] = parsedParentVal;
+    }
+    
+    // Remove ID fields from update data
+    const idFieldVariations = [
+        config.idField,
+        'id',
+        '_id',
+        config.idField.toLowerCase(),
+        config.idField.replace(/([A-Z])/g, '_$1').toLowerCase(),
+    ];
+    
+    for (const idField of idFieldVariations) {
+        if (sanitizedData[idField] !== undefined) {
+            delete sanitizedData[idField];
+        }
+    }
+    
+    // If no fields to update, throw error
+    if (Object.keys(sanitizedData).length === 0) {
+        throw new Error(`No valid fields provided for update`);
+    }
+    
+    try {
+        return await prisma[config.model].update({
+            where: { [config.idField]: numericId },
+            data: sanitizedData,
+            include: config.includes,
+        });
+    } catch (error) {
+        if (error.code === 'P2002') {
+            const field = error.meta?.target?.[0] || 'value';
+            const readable = String(field).replace(/_/g, ' ').replace(/\bid\b/i, '').trim() || 'value';
+            const dupError = new Error(`A record with this ${readable} already exists`);
+            dupError.statusCode = 409;
+            throw dupError;
+        }
+        if (error.code === 'P2025') {
+            const e = new Error('Record not found');
+            e.statusCode = 404;
+            throw e;
+        }
+        throw error;
+    }
+};
+
+/**
+ * Check for dependent records before deletion
+ */
+const checkDependentRecords = async (entityType, config, id) => {
+    // Check _count if available in includes
+    if (config.includes && config.includes._count && config.includes._count.select) {
+        // Properly structure _count query - Prisma expects _count: { select: {...} }
+        const entity = await prisma[config.model].findUnique({
+            where: { [config.idField]: id },
+            select: { 
+                _count: {
+                    select: config.includes._count.select
+                }
+            },
+        });
+        
+        if (entity && entity._count) {
+            const dependentCounts = Object.entries(entity._count)
+                .filter(([_, count]) => count > 0);
+            
+            if (dependentCounts.length > 0) {
+                return {
+                    hasDependents: true,
+                    counts: Object.fromEntries(dependentCounts),
+                };
+            }
+        }
+    }
+    
+    return { hasDependents: false };
+};
+
+/**
+ * Generic delete
+ */
+const deleteEntity = async (entityType, id) => {
+    const config = getEntityConfig(entityType);
+    
+    // Validate ID
+    if (id === undefined || id === null || id === '') {
+        throw new Error(`Cannot delete ${entityType}: missing ID field`);
+    }
+    
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+        throw new Error(`Cannot delete ${entityType}: invalid ID: ${id}`);
+    }
+    
+    // Note: With onDelete: SetNull in schema, dependent records will be automatically nullified
+    try {
+        return await prisma[config.model].delete({
+            where: { [config.idField]: parsedId },
+        });
+    } catch (error) {
+        // Handle foreign key constraint violations (if schema doesn't have SetNull)
+        if (error.code === 'P2003') {
+            throw new Error(`Cannot delete ${entityType}: has dependent records. Please try again or contact support.`);
+        }
+        // Handle record not found
+        if (error.code === 'P2025') {
+            throw new Error(`${entityType} not found`);
+        }
+        // Re-throw other errors
+        throw error;
+    }
+};
+
+/**
+ * Check if name exists (for validation)
+ */
+const nameExists = async (entityType, name, excludeId = null) => {
+    const config = getEntityConfig(entityType);
+
+    const where = {
+        [config.nameField]: {
+            equals: name,
+            mode: 'insensitive',
+        },
+    };
+
+    if (excludeId) {
+        where[config.idField] = { not: parseInt(excludeId) };
+    }
+
+    const count = await prisma[config.model].count({ where });
+    return count > 0;
+};
+
+/**
+ * Validate references (for entities with foreign keys)
+ */
+const validateReferences = async (entityType, data) => {
+    // Other masters are simple entities with no foreign keys
+    // This is a placeholder for future extensibility
+    return true;
+};
+
+module.exports = {
+    ENTITY_CONFIG,
+    findAll,
+    findById,
+    create,
+    update,
+    deleteEntity,
+    nameExists,
+    validateReferences,
+};

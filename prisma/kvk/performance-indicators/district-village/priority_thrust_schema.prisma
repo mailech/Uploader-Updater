@@ -1,0 +1,14 @@
+model PriorityThrustArea {
+  priorityThrustAreaId String      @id @default(uuid()) @map("priority_thrust_area_id")
+  kvkId                Int
+  reportingYear DateTime? @map("reporting_year")
+thrustArea           String      @map("thrust_area")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+  kvk                  Kvk         @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+@@index([kvkId])
+  @@index([reportingYear])
+  @@index([thrustArea])
+  @@index([createdAt])
+  @@map("priority_thrust_area")
+}

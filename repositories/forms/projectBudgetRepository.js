@@ -1,0 +1,128 @@
+const prisma = require('../../config/prisma.js');
+const reportCacheInvalidationService = require('../../services/reports/reportCacheInvalidationService.js');
+
+const projectBudgetRepository = {
+    create: async (data, user) => {
+        let kvkId = (user && user.kvkId) ? parseInt(user.kvkId) : (data.kvkId ? parseInt(data.kvkId) : null);
+        if (!kvkId) throw new Error('Valid kvkId is required');
+
+        const record = await prisma.projectBudget.create({
+            data: {
+                kvkId,
+                startDate: new Date(data.startDate),
+                endDate: new Date(data.endDate),
+                financialProjectId: parseInt(data.financialProjectId),
+                fundingAgencyId: data.fundingAgencyId ? parseInt(data.fundingAgencyId) : null,
+                specifyProjectName: data.specifyProjectName || null,
+                specifyAgencyName: data.specifyAgencyName || null,
+                accountNumber: data.accountNumber || '',
+                budgetEstimate: parseFloat(data.budgetEstimate || 0),
+                budgetAllocated: parseFloat(data.budgetAllocated || 0),
+                budgetReleased: parseFloat(data.budgetReleased || 0),
+                expenditure: parseFloat(data.expenditure || 0),
+            }
+        });
+
+        await reportCacheInvalidationService.invalidateDataSourceForKvk('projectBudget', kvkId);
+        return {
+            ...record,
+            unspentBalance: (record.budgetAllocated || 0) - (record.expenditure || 0)
+        };
+    },
+
+    findAll: async (filters = {}, user) => {
+        const where = {};
+        if (user && ['kvk_admin', 'kvk_user'].includes(user.roleName)) {
+            where.kvkId = parseInt(user.kvkId);
+        } else if (filters.kvkId) {
+            where.kvkId = parseInt(filters.kvkId);
+        }
+
+        const records = await prisma.projectBudget.findMany({
+            where,
+            include: {
+                kvk: { select: { kvkName: true } },
+                projectName: { select: { projectName: true } },
+                fundingAgency: { select: { agencyName: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return records.map(record => ({
+            ...record,
+            unspentBalance: (record.budgetAllocated || 0) - (record.expenditure || 0)
+        }));
+    },
+
+    findById: async (id, user) => {
+        const where = { projectBudgetId: id };
+        if (user && ['kvk_admin', 'kvk_user'].includes(user.roleName)) {
+            where.kvkId = parseInt(user.kvkId);
+        }
+        const record = await prisma.projectBudget.findFirst({
+            where,
+            include: {
+                kvk: { select: { kvkName: true } },
+                projectName: { select: { projectName: true } },
+                fundingAgency: { select: { agencyName: true } }
+            }
+        });
+
+        if (!record) return null;
+
+        return {
+            ...record,
+            unspentBalance: (record.budgetAllocated || 0) - (record.expenditure || 0)
+        };
+    },
+
+    update: async (id, data, user) => {
+        const where = { projectBudgetId: id };
+        if (user && ['kvk_admin', 'kvk_user'].includes(user.roleName)) {
+            where.kvkId = parseInt(user.kvkId);
+        }
+
+        const existing = await prisma.projectBudget.findFirst({ where });
+        if (!existing) throw new Error('Record not found or unauthorized');
+
+        const updated = await prisma.projectBudget.update({
+            where: { projectBudgetId: id },
+            data: {
+                startDate: data.startDate ? new Date(data.startDate) : existing.startDate,
+                endDate: data.endDate ? new Date(data.endDate) : existing.endDate,
+                financialProjectId: data.financialProjectId !== undefined ? parseInt(data.financialProjectId) : existing.financialProjectId,
+                fundingAgencyId: data.fundingAgencyId !== undefined ? (data.fundingAgencyId ? parseInt(data.fundingAgencyId) : null) : existing.fundingAgencyId,
+                specifyProjectName: data.specifyProjectName !== undefined ? data.specifyProjectName : existing.specifyProjectName,
+                specifyAgencyName: data.specifyAgencyName !== undefined ? data.specifyAgencyName : existing.specifyAgencyName,
+                accountNumber: data.accountNumber !== undefined ? data.accountNumber : existing.accountNumber,
+                budgetEstimate: data.budgetEstimate !== undefined ? parseFloat(data.budgetEstimate) : existing.budgetEstimate,
+                budgetAllocated: data.budgetAllocated !== undefined ? parseFloat(data.budgetAllocated) : existing.budgetAllocated,
+                budgetReleased: data.budgetReleased !== undefined ? parseFloat(data.budgetReleased) : existing.budgetReleased,
+                expenditure: data.expenditure !== undefined ? parseFloat(data.expenditure) : existing.expenditure,
+            }
+        });
+
+        await reportCacheInvalidationService.invalidateDataSourceForKvk('projectBudget', existing.kvkId);
+        return {
+            ...updated,
+            unspentBalance: (updated.budgetAllocated || 0) - (updated.expenditure || 0)
+        };
+    },
+
+    delete: async (id, user) => {
+        const where = { projectBudgetId: id };
+        if (user && ['kvk_admin', 'kvk_user'].includes(user.roleName)) {
+            where.kvkId = parseInt(user.kvkId);
+        }
+        const existing = await prisma.projectBudget.findFirst({ where });
+        if (!existing) throw new Error('Record not found or unauthorized');
+
+        const removed = await prisma.projectBudget.delete({
+            where: { projectBudgetId: id }
+        });
+        await reportCacheInvalidationService.invalidateDataSourceForKvk('projectBudget', existing.kvkId);
+        return removed;
+    }
+};
+
+module.exports = projectBudgetRepository;

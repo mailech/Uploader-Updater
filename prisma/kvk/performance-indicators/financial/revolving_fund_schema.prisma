@@ -1,0 +1,16 @@
+model RevolvingFund {
+  revolvingFundId       String      @id @default(uuid()) @map("revolving_fund_id")
+  kvkId                 Int
+  reportingYear DateTime? @map("reporting_year")
+openingBalance        Float       @map("opening_balance")
+  incomeDuringYear      Float       @map("income_during_year")
+  expenditureDuringYear Float       @map("expenditure_during_year")
+  kind                  String?     @map("kind")
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+  kvk                   Kvk         @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+@@index([kvkId])
+  @@index([reportingYear])
+  @@index([createdAt])
+  @@map("revolving_fund")
+}

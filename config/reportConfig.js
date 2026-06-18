@@ -1,0 +1,1963 @@
+/**
+ * Report Configuration
+ * Defines the structure, sections, and data sources for KVK reports
+ */
+const { REPORT_INDEX_TAXONOMY } = require('./reportIndexTaxonomy.js');
+
+const reportConfig = {
+    metadata: {
+        name: 'KVK Comprehensive Report',
+        version: '1.0.0',
+        description: 'Comprehensive report containing all modules for KVK',
+    },
+    pdfFooter: {
+        enabled: true,
+        textTemplate: 'Page {current} of {total}',
+        fontSize: 9,
+        color: { r: 90, g: 90, b: 90 },
+        bottomMarginPt: 24,
+        align: 'right',
+        fontName: 'Helvetica',
+    },
+
+    sections: [
+        // ── About KVK ───────────────────────────────────
+        {
+            id: '1.1',
+            title: 'KVK Basic Information',
+            description: 'Basic details about the KVK including contact information and geographic data',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvk',
+            format: 'custom',                 
+            customTemplate: 'about-kvk-view', // temp;ate key
+            filters: {
+                dateFields: [],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK Name' },
+                { dbField: 'address', displayName: 'Address' },
+                { dbField: 'email', displayName: 'Email' },
+                { dbField: 'mobile', displayName: 'Mobile' },
+                { dbField: 'landline', displayName: 'Office Phone', optional: true },
+                { dbField: 'fax', displayName: 'Fax', optional: true },
+                { dbField: 'zone.zoneName', displayName: 'Zone' },
+                { dbField: 'state.stateName', displayName: 'State' },
+                { dbField: 'district.districtName', displayName: 'District' },
+                { dbField: 'org.orgName', displayName: 'Organization' },
+                { dbField: 'university.universityName', displayName: 'University', optional: true },
+                { dbField: 'hostOrg', displayName: 'Host Organization' },
+                { dbField: 'hostAddress', displayName: 'Host Address', optional: true },
+                { dbField: 'hostLandline', displayName: 'Host Office Phone', optional: true },
+                { dbField: 'hostFax', displayName: 'Host Fax', optional: true },
+                { dbField: 'hostEmail', displayName: 'Host Email', optional: true },
+                { dbField: 'yearOfSanction', displayName: 'Year of Sanction' },
+                { dbField: 'landDetails', displayName: 'Land Details', type: 'raw', optional: true },
+            ],
+        },
+        {
+            id: '1.2',
+            title: 'Bank Account Details',
+            description: 'All bank accounts associated with the KVK',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkBankAccounts',
+            format: 'custom',
+            customTemplate: 'about-kvk-bank-accounts',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            // Column order mirrors the sample: KVK Name, Account Type, Account Name, Name of the bank, Location, Account Number
+            fields: [
+                { dbField: 'kvk.kvkName', displayName: 'KVK Name' },
+                { dbField: 'accountType', displayName: 'Account Type' },
+                { dbField: 'accountName', displayName: 'Account Name' },
+                { dbField: 'bankName', displayName: 'Name of the bank' },
+                { dbField: 'location', displayName: 'Location' },
+                { dbField: 'accountNumber', displayName: 'Account Number' },
+            ],
+        },
+        {
+            id: '1.3',
+            title: 'Employee Details',
+            description: 'Heads of KVKs (position order = 1)',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkEmployeesHeads',
+            format: 'custom',
+            customTemplate: 'about-kvk-employee-contacts',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'kvk.kvkName', displayName: 'KVK' },
+                { dbField: 'staffName', displayName: 'Name' },
+                { dbField: 'residence', displayName: 'Residence', optional: true },
+                { dbField: 'mobile', displayName: 'Mobile' },
+                { dbField: 'email', displayName: 'Email' },
+            ],
+        },
+        {
+            id: '1.4',
+            title: 'All KVK staff Details',
+            description: 'All active employees/staff of the KVK',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkEmployees',
+            format: 'custom',
+            customTemplate: 'about-kvk-employees-full',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'kvk.kvkName', displayName: 'KVK' },
+                { dbField: 'sanctionedPost.postName', displayName: 'Sanctioned post' },
+                { dbField: 'staffName', displayName: 'Name of the Incumbent' },
+                { dbField: 'dateOfBirth', displayName: 'Date of Birth', type: 'date' },
+                { dbField: 'discipline.disciplineName', displayName: 'Discipline' },
+                { dbField: 'payLevel.levelName', displayName: 'Pay Scale with Present Basic', optional: true },
+                { dbField: 'dateOfJoining', displayName: 'Date of joining', type: 'date' },
+                { dbField: 'staffCategory.categoryName', displayName: 'Category (SC/ST/ OBC/ General)', optional: true },
+            ],
+        },  
+        {
+            id: '1.5',
+            title: 'Infrastructure Details',
+            description: 'All infrastructure records for the KVK',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkInfrastructure',
+            format: 'table',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'infraMaster.name', displayName: 'Infrastructure Name' },
+                { dbField: 'notYetStarted', displayName: 'Not Yet Started', type: 'boolean' },
+                { dbField: 'completedPlinthLevel', displayName: 'Completed Plinth Level', type: 'boolean' },
+                { dbField: 'completedLintelLevel', displayName: 'Completed Lintel Level', type: 'boolean' },
+                { dbField: 'completedRoofLevel', displayName: 'Completed Roof Level', type: 'boolean' },
+                { dbField: 'totallyCompleted', displayName: 'Totally Completed', type: 'boolean' },
+                { dbField: 'plinthAreaSqM', displayName: 'Plinth Area (sq m)' },
+                { dbField: 'underUse', displayName: 'Under Use', type: 'boolean' },
+                { dbField: 'sourceOfFunding', displayName: 'Source of Funding' },
+            ],
+        },
+        {
+            id: '1.6',
+            title: 'Vehicle Details',
+            description: 'All vehicles and their maintenance records',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkVehicles',
+            format: 'custom',
+            customTemplate: 'about-kvk-vehicles',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'kvk.kvkName', displayName: 'KVK' },
+                { dbField: 'vehicleName', displayName: 'Type of vehicle' },
+                { dbField: 'yearOfPurchase', displayName: 'Year of purchase' },
+                { dbField: 'totalCost', displayName: 'Cost (Rs.)' },
+                { dbField: 'totalRun', displayName: 'Total Run(km/hrs)', optional: true },
+                { dbField: 'presentStatus', displayName: 'Present status' },
+            ],
+        },
+        {
+            id: '1.7',
+            title: 'Vehicles Records',
+            description: 'Vehicle reporting-year records (Vehicle Details form)',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkVehicleDetails',
+            format: 'custom',
+            customTemplate: 'about-kvk-vehicle-details',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'reportingYear', displayName: 'Year' },
+                { dbField: 'kvk.kvkName', displayName: 'KVK' },
+                { dbField: 'vehicleName', displayName: 'Vehicle' },
+                { dbField: 'registrationNo', displayName: 'Registration No.' },
+                { dbField: 'yearOfPurchase', displayName: 'Year of purchase' },
+                { dbField: 'totalCost', displayName: 'Cost (Rs.)' },
+                { dbField: 'totalRun', displayName: 'Total Run(km/hrs)' },
+                { dbField: 'presentStatus', displayName: 'Present status' },
+                { dbField: 'repairingCost', displayName: 'Repairing Cost', optional: true },
+                { dbField: 'sourceOfFunding', displayName: 'Funding Source', optional: true },
+            ],
+        },
+        {
+            id: '1.8',
+            title: 'Equipment Details',
+            description: 'All equipments and their details',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkEquipments',
+            format: 'grouped-table',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'equipmentName', displayName: 'Equipment Name' },
+                { dbField: 'yearOfPurchase', displayName: 'Year of Purchase' },
+                { dbField: 'totalCost', displayName: 'Total Cost', type: 'currency' },
+                { dbField: 'presentStatus', displayName: 'Present Status' },
+                { dbField: 'sourceOfFunding', displayName: 'Source of Funding' },
+                { dbField: 'reportingYear', displayName: 'Reporting Year', optional: true },
+            ],
+        },
+        {
+            id: '1.9',
+            title: 'Equipment Records',
+            description: 'Equipment reporting-year records (Equipment Details form)',
+            subsection: true,
+            parentSectionId: '1',
+            dataSource: 'kvkEquipmentRecords',
+            format: 'custom',
+            customTemplate: 'about-kvk-equipment-records',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [
+                { dbField: 'reportingYear', displayName: 'Year' },
+                { dbField: 'kvk.kvkName', displayName: 'KVK' },
+                { dbField: 'equipmentName', displayName: 'Equipment Name' },
+                { dbField: 'yearOfPurchase', displayName: 'Year of purchase' },
+                { dbField: 'totalCost', displayName: 'Cost (Rs.)' },
+                { dbField: 'sourceOfFunding', displayName: 'Source of fund' },
+                { dbField: 'presentStatus', displayName: 'Present status' },
+            ],
+        },
+
+        // ── Achievements ───────────────────────────────────
+        {
+            id: '2.2',
+            title: 'OFT Summary',
+            description: 'Technology Assessed by KVK - sector-wise thematic area summary',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'oftSummary',
+            format: 'custom',
+            customTemplate: 'oft-summary',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.3',
+            title: 'OFT Details',
+            description: 'Individual OFT trial detail cards with results',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'oftDetailCards',
+            format: 'custom',
+            customTemplate: 'oft-detail-cards',
+            filters: {
+                dateFields: ['createdAt'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.4',
+            title: 'Achievements of Front-Line Demonstrations (FLD)',
+            description: 'State-wise summary by FLD category and category-wise detail (farmers, demos, area, yield, economics)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'fldStateCategoryReport',
+            format: 'custom',
+            customTemplate: 'fld-state-category-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.5',
+            title: 'Achievements on Extension & Training under FLD',
+            description: 'Extension & Training achievements under FLD',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'fldExtensionTrainingReport',
+            format: 'custom',
+            customTemplate: 'fld-extension-training-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.6',
+            title: 'Achievements on Technical Feedback on FLD',
+            description: 'Technical feedback on FLD',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'fldTechnicalFeedbackReport',
+            format: 'custom',
+            customTemplate: 'fld-technical-feedback-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.7',
+            title: 'Achievements on Training',
+            description: 'State-wise, thematic-area summary and thematic details by training type (training achievement data)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'trainingCapacityReport',
+            format: 'custom',
+            customTemplate: 'training-capacity-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.8',
+            title: 'Achievements of Extension/Outreach Activities',
+            description: 'State-wise extension summary and activity-wise breakdown (farmers and extension officials by category)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'extensionOutreachReport',
+            format: 'custom',
+            customTemplate: 'extension-outreach-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.9',
+            title: 'Other Extension/content mobilization activities',
+            description: 'Other extension activities by nature of activity; state-wise counts and totals (KVK other extension form)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'otherExtensionContentReport',
+            format: 'custom',
+            customTemplate: 'other-extension-content-matrix-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.10',
+            title: 'Technology week celebration',
+            description: 'State-wise summary: KVKs, technology week activity counts, and participants',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'technologyWeekCelebrationReport',
+            format: 'custom',
+            customTemplate: 'technology-week-state-summary-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.11',
+            title: 'Details of Important days celebrated in KVKs.',
+            description: 'Important days by state: KVKs, activities, and participants (dynamic state columns)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'celebrationDaysReport',
+            format: 'custom',
+            customTemplate: 'celebration-days-state-matrix-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.12',
+            title: 'Production & Supply of Technological products',
+            description: 'Product-wise quantity, value (Rs), and farmer participants by social category (General, OBC, SC, ST)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'productionSupplyReport',
+            format: 'custom',
+            customTemplate: 'production-supply-page-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.13',
+            title: 'Soil & Water Testing - Laboratory Equipment',
+            description: 'Equipment available in the Soil and Water Testing Laboratory (name and quantity)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'soilWaterEquipmentReport',
+            format: 'custom',
+            customTemplate: 'soil-water-equipment-page-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.14',
+            title: 'Detail of Soil, Water and Plant analysis',
+            description: 'Samples, villages, and farmers benefitted by analysis category and state',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'soilWaterAnalysisReport',
+            format: 'custom',
+            customTemplate: 'soil-water-analysis-state-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.15',
+            title: 'World Soil Day celebration',
+            description: 'World Soil Day activity details at KVK; state-wise summary when aggregated',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'worldSoilDayReport',
+            format: 'custom',
+            customTemplate: 'world-soil-day-page-report',
+            filters: {
+                dateFields: ['startDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [],
+        },
+
+        {
+            id: '2.55',
+            title: 'Publications Details',
+            description: 'Publication counts by type (summary for modular all-report)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'kvkPublicationDetails',
+            format: 'custom',
+            customTemplate: 'publication-page-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'category', displayName: 'Category' },
+                { dbField: 'authorName', displayName: 'Authors' },
+                { dbField: 'title', displayName: 'Title' },
+                { dbField: 'journalName', displayName: 'Journal Name' },
+            ],
+        },
+        {
+            id: '2.56',
+            title: 'Award and Recognition of KVK',
+            description: 'Awards received: detailed list for modular all-report',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'kvkAward',
+            format: 'custom',
+            customTemplate: 'kvk-award-detailed',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'Name of the KVK' },
+                { dbField: 'awardName', displayName: 'Name of the Award' },
+                { dbField: 'amount', displayName: 'Amount' },
+                { dbField: 'achievement', displayName: 'Achievement' },
+                { dbField: 'conferringAuthority', displayName: 'Conferring Authority' },
+            ],
+        },
+        {
+            id: '2.57',
+            title: 'Award and Recognition of Scientist',
+            description: 'Scientist awards: summary counts per KVK/scientist in modular all-report (line-by-line on Data Management export)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'scientistAward',
+            format: 'custom',
+            customTemplate: 'scientist-award-summary-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'scientistName', displayName: 'Name of the Head/Scientist' },
+                { dbField: 'awardName', displayName: 'Name of the Award' },
+                { dbField: 'amount', displayName: 'Amount' },
+                { dbField: 'achievement', displayName: 'Achievement' },
+                { dbField: 'conferringAuthority', displayName: 'Conferring Authority' },
+            ],
+        },
+        {
+            id: '2.58',
+            title: 'Award and Recognition of Farmer',
+            description: 'Farmer awards: summary counts per KVK and farmer (same layout in modular report and Data Management export)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'farmerAward',
+            format: 'custom',
+            customTemplate: 'farmer-award-summary-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'Name of the KVK' },
+                { dbField: 'farmerName', displayName: 'Name of the Farmer' },
+                { dbField: 'awardName', displayName: 'Name of the Award' },
+                { dbField: 'amount', displayName: 'Amount' },
+                { dbField: 'achievement', displayName: 'Achievement' },
+                { dbField: 'conferringAuthority', displayName: 'Conferring Authority' },
+            ],
+        },
+        {
+            id: '2.59',
+            title: 'Details of HRD programmes undergone by KVK personnel',
+            description: 'HRD programmes attended by staff (same layout in modular report and Data Management export)',
+            subsection: true,
+            parentSectionId: '2',
+            dataSource: 'hrdProgram',
+            format: 'custom',
+            customTemplate: 'hrd-programmes-report',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [
+                { dbField: 'staffAndDesignation', displayName: 'Name of Staff and designation' },
+                { dbField: 'courseName', displayName: 'Name of course/training program attended' },
+                { dbField: 'startDate', displayName: 'Start Date', type: 'date' },
+                { dbField: 'endDate', displayName: 'End Date', type: 'date' },
+                { dbField: 'durationDays', displayName: 'Duration' },
+                { dbField: 'organizer', displayName: 'Organizer' },
+                { dbField: 'venue', displayName: 'Venue' },
+            ],
+        },
+        {
+            id: '2.16',
+            title: 'Performance of Demonstration under CFLD',
+            description: 'Combined CFLD report with technical, economic, socio-economic and perception parameters',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'cfldCombined',
+            format: 'custom',
+            customTemplate: 'cfld-combined',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'reportingYear', displayName: 'Reporting Year', type: 'date' },
+                { dbField: 'kvkName', displayName: 'KVK Name' },
+                { dbField: 'stateName', displayName: 'State' },
+                { dbField: 'cropTypeName', displayName: 'Crop Type' },
+                { dbField: 'seasonName', displayName: 'Season' },
+                { dbField: 'cropName', displayName: 'Crop' },
+                { dbField: 'areaInHa', displayName: 'Area (ha)' },
+                { dbField: 'technologyDemonstrated', displayName: 'Detail of technology demonstrated' },
+                { dbField: 'farmerYield', displayName: 'Yield in farmer field (q/ha)' },
+                { dbField: 'demoYieldAvg', displayName: 'Yield in demonstration (q/ha)' },
+                { dbField: 'percentIncrease', displayName: '% Increase' },
+            ],
+        },
+        {
+            id: '2.17',
+            title: 'Extension activities under CFLD conducted',
+            description: 'CFLD extension activities with participant category counts',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'cfldExtensionActivity',
+            format: 'custom',
+            customTemplate: 'cfld-extension-activity',
+            filters: {
+                dateFields: ['activityDate'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK Name' },
+                { dbField: 'extensionActivityName', displayName: 'Extension Activities organized' },
+                { dbField: 'activityDate', displayName: 'Activity Date', type: 'date' },
+                { dbField: 'placeOfActivity', displayName: 'Place of Activity' },
+                { dbField: 'generalM', displayName: 'General M' },
+                { dbField: 'generalF', displayName: 'General F' },
+                { dbField: 'obcM', displayName: 'OBC M' },
+                { dbField: 'obcF', displayName: 'OBC F' },
+                { dbField: 'scM', displayName: 'SC M' },
+                { dbField: 'scF', displayName: 'SC F' },
+                { dbField: 'stM', displayName: 'ST M' },
+                { dbField: 'stF', displayName: 'ST F' },
+                { dbField: 'totalFarmers', displayName: 'Total Farmers' },
+            ],
+        },
+        {
+            id: '2.18',
+            title: 'Details of budget utilization',
+            description: 'CFLD crop-wise budget utilization details',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'cfldBudgetUtilization',
+            format: 'custom',
+            customTemplate: 'cfld-budget-utilization',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYearDate'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK Name' },
+                { dbField: 'seasonName', displayName: 'Season' },
+                { dbField: 'cropName', displayName: 'Crop' },
+                { dbField: 'overallFundAllocation', displayName: 'Overall fund allocation' },
+                { dbField: 'areaAllotted', displayName: 'Area (ha) alloted' },
+                { dbField: 'areaAchieved', displayName: 'Area (ha) achieved' },
+            ],
+        },
+        {
+            id: '2.19',
+            title: 'CRA Details',
+            description: 'Climate resilient agriculture details with state-wise presentation',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'craDetails',
+            format: 'custom',
+            customTemplate: 'cra-details-state-wise',
+            filters: {
+                dateFields: [],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.20',
+            title: 'CRA Extension Activity',
+            description: 'Extension activities under climate resilient agriculture',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'craExtensionActivity',
+            format: 'custom',
+            customTemplate: 'cra-extension-activity',
+            filters: {
+                dateFields: ['startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.21',
+            title: 'Formation and Promotion of FPOs as CBBOs under NCDC Funding',
+            description: 'FPO registration, training and business performance under CBBO support',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'fpoCbboDetails',
+            format: 'custom',
+            customTemplate: 'fpo-cbbo-details',
+            filters: {
+                dateFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.22',
+            title: 'Details of commodity-based organizations/Farmers Cooperative Society/FPO Formed/Associated with KVK under NCDC Funding',
+            description: 'FPO management profile details under NCDC funding',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'fpoManagement',
+            format: 'custom',
+            customTemplate: 'fpo-management-details',
+            filters: {
+                dateFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.23',
+            title: 'DRMR Details',
+            description: 'DRMR varietal and economics comparison details',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'drmrDetails',
+            format: 'custom',
+            customTemplate: 'drmr-details',
+            filters: {
+                dateFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.24',
+            title: 'DRMR Activity',
+            description: 'Details augmenting rapeseed-mustard production activities with participant category totals',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'drmrActivity',
+            format: 'custom',
+            customTemplate: 'drmr-activity',
+            filters: {
+                dateFields: ['reportingYear', 'startDate', 'endDate'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.25',
+            title: 'NARI Nutrition Garden Details',
+            description: 'Details of established nutrition garden in nutri-smart village',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nariNutritionGarden',
+            format: 'custom',
+            customTemplate: 'nari-nutrition-garden',
+            filters: {
+                dateFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.26',
+            title: 'NARI Bio-fortified Crops',
+            description: 'Details of bio-fortified crops used in nutri-smart village with beneficiary category counts',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nariBioFortified',
+            format: 'custom',
+            customTemplate: 'nari-bio-fortified',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.27',
+            title: 'NARI Value Addition',
+            description: 'Details of value addition in nutri-smart village with beneficiary category counts',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nariValueAddition',
+            format: 'custom',
+            customTemplate: 'nari-value-addition',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.28',
+            title: 'NARI Training Programmes',
+            description: 'Training programmes in nutri-smart village with participant category counts',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nariTraining',
+            format: 'custom',
+            customTemplate: 'nari-training',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.29',
+            title: 'NARI Extension Activities',
+            description: 'Extension activities under NARI project with beneficiary category counts',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nariExtension',
+            format: 'custom',
+            customTemplate: 'nari-extension',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.30',
+            title: 'ARYA Current Year Details',
+            description: 'Attracting and retaining youth in agriculture (current year)',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'aryaCurrent',
+            format: 'custom',
+            customTemplate: 'arya-current',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.31',
+            title: 'ARYA Previous Year Details',
+            description: 'Attracting and retaining youth in agriculture (previous year evaluation)',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'aryaPrevYear',
+            format: 'custom',
+            customTemplate: 'arya-prev-year',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.32',
+            title: 'CSISA Details',
+            description: 'Details of Cereal Systems Initiative for South Asia (CSISA) with crop trial data',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'csisa',
+            format: 'custom',
+            customTemplate: 'csisa',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.33',
+            title: 'TSP / SCSP Details',
+            description: 'Details of Tribal Sub Plan (TSP) and Scheduled Caste Sub Plan (SCSP)',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'tspScsp',
+            format: 'custom',
+            customTemplate: 'tsp-scsp',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.34',
+            title: 'NICRA – Basic Information (District and Adopted Village)',
+            description: 'Rainfall, temperature, dry spells, intensive rain, flood water depth/duration',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nicraBasic',
+            format: 'custom',
+            customTemplate: 'nicra-basic',
+            filters: {
+                dateFields: ['reportingDate', 'startDate'],
+                yearFields: ['reportingDate', 'startDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.35',
+            title: 'NICRA – Training',
+            description: 'Training courses with duration, type, and participant categories',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nicraTraining',
+            format: 'custom',
+            customTemplate: 'nicra-training',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate', 'endDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.36',
+            title: 'NICRA – Extension Activity',
+            description: 'Extension activities with number of programmes and participant categories',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nicraExtensionActivity',
+            format: 'custom',
+            customTemplate: 'nicra-extension',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate', 'endDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.37',
+            title: 'NICRA – Other Interventions',
+            description: 'Seed bank and fodder bank items with crop/variety and quantity',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'nicraIntervention',
+            format: 'custom',
+            customTemplate: 'nicra-intervention',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate', 'endDate'],
+            },
+            fields: [],
+        },
+         {
+             id: '2.38',
+             title: 'NICRA – Custom Hiring of Farm Implement',
+             description: 'Custom hiring usage, coverage, hours, revenue, and repairing expenditure',
+             subsection: true,
+             parentSectionId: '3',
+             dataSource: 'nicraFarmImplement',
+             format: 'custom',
+             customTemplate: 'nicra-farm-implement',
+             filters: {
+                 dateFields: ['startDate', 'endDate'],
+                 yearFields: ['startDate', 'endDate'],
+             },
+             fields: [],
+         },
+         {
+             id: '2.39',
+             title: 'NICRA – Village wise VCRMC',
+             description: 'VCRMC constitution details, members, meetings, and leadership',
+             subsection: true,
+             parentSectionId: '3',
+             dataSource: 'nicraVcrmc',
+             format: 'custom',
+             customTemplate: 'nicra-vcrmc',
+             filters: {
+                 dateFields: ['vcrmcConstitutionDate', 'dateOfMeeting'],
+                 yearFields: ['vcrmcConstitutionDate'],
+             },
+             fields: [],
+         },
+         {
+             id: '2.40',
+             title: 'NICRA – Soil Health Card',
+             description: 'Soil samples, SHC issued, and beneficiaries by category',
+             subsection: true,
+             parentSectionId: '3',
+             dataSource: 'nicraSoilHealth',
+             format: 'custom',
+             customTemplate: 'nicra-soil-health',
+             filters: {
+                 dateFields: ['startDate', 'endDate'],
+                 yearFields: ['startDate', 'endDate'],
+             },
+             fields: [],
+         },
+
+
+        // ── Natural Farming ───────────────────────────────────
+        {
+            id: '2.44',
+            title: 'Natural Farming – Physical Information',
+            description: 'Training, Awareness and Other activities with state-wise aggregation',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'naturalFarmingPhysical',
+            format: 'custom',
+            customTemplate: 'natural-farming-physical',
+            filters: {
+                dateFields: ['trainingDate'],
+                yearFields: ['trainingDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.46',
+            title: 'Natural Farming – Demonstration Information',
+            description: 'KVK/Farmer wise information of demonstration conducted with NF vs without comparison parameters',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'naturalFarmingDemonstration',
+            format: 'custom',
+            customTemplate: 'nf-demonstration-information',
+            filters: {
+                dateFields: ['startDate', 'endDate', 'reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.47',
+            title: 'Natural Farming – Farmers Already Practicing',
+            description: 'Information of farmer already practicing Natural Farming with without vs with NF parameter comparison',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'naturalFarmingFarmersPracticing',
+            format: 'custom',
+            customTemplate: 'nf-farmers-practicing-information',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.49',
+            title: 'Natural Farming – Soil Data Information',
+            description: 'Soil parameters before crop sowing and after harvesting for KVK and farmers field plots',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'naturalFarmingSoilData',
+            format: 'custom',
+            customTemplate: 'nf-soil-data-information',
+            filters: {
+                dateFields: ['reportingYearDate'],
+                yearFields: ['year', 'reportingYearDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.50',
+            title: 'Natural Farming – Budget Expenditure Information',
+            description: 'Budget sanction and expenditure by activity (Training, Awareness, Demonstration, Other)',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'naturalFarmingBudgetExpenditure',
+            format: 'custom',
+            customTemplate: 'nf-budget-expenditure-information',
+            filters: {
+                dateFields: ['reportingYearDate'],
+                yearFields: ['year', 'reportingYearDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.51',
+            title: 'Agri-Drone Introduction',
+            description: 'Information of Agri Drone project implementation by the different Institutions/KVK',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'agriDroneIntroduction',
+            format: 'custom',
+            customTemplate: 'agri-drone-introduction',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.52',
+            title: 'Agri-Drone Demonstration Details',
+            description: 'Details of Demonstrations under Agri-drone Project with participant categories',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'agriDroneDemonstrationDetails',
+            format: 'custom',
+            customTemplate: 'agri-drone-demonstration-details',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.53',
+            title: 'Seed Hub Programme – Seed Production and Sale',
+            description: 'Information of quality seed produced in participatory mode under Seed Hub',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'seedHub',
+            format: 'custom',
+            customTemplate: 'seed-hub',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [],
+        },
+        {
+            id: '2.54',
+            title: 'Other Programmes organized by KVK (not covered above)',
+            description: 'Other programmes with beneficiary categories and KVK name column',
+            subsection: true,
+            parentSectionId: '3',
+            dataSource: 'otherProgrammes',
+            format: 'custom',
+            customTemplate: 'other-programmes',
+            filters: {
+                dateFields: ['programmeDate'],
+                yearFields: ['programmeDate'],
+            },
+            fields: [],
+        },
+        {
+            id: '4.1',
+            title: 'Impact of KVK activities',
+            description: 'Impact of KVK activities/ large-scale adoption of technology',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'kvkImpactActivity',
+            format: 'custom',
+            customTemplate: 'kvk-impact-activity',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'specificArea', displayName: 'Specific Area' },
+                { dbField: 'farmersBenefitted', displayName: 'Farmers Benefitted' },
+                { dbField: 'adoptionPercentage', displayName: '% Adoption' },
+            ],
+        },
+        {
+            id: '4.2',
+            title: 'Entrepreneurship',
+            description: 'Details of entrepreneurship/startup developed by KVK',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'entrepreneurship',
+            format: 'custom',
+            customTemplate: 'entrepreneurship',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'entrepreneurName', displayName: 'Name of the entrepreneur' },
+                { dbField: 'enterpriseType', displayName: 'Type of Enterprise' },
+                { dbField: 'annualIncome', displayName: 'Annual Income', type: 'currency' },
+                { dbField: 'yearOfEstablishment', displayName: 'Year of establishment' },
+            ],
+        },
+        {
+            id: '4.3',
+            title: 'Success Stories',
+            description: 'Success stories and Case studies of farmers/entrepreneurs',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'successStory',
+            format: 'custom',
+            customTemplate: 'success-story',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'farmerName', displayName: 'Name of the farmer/ entrepreneur' },
+                { dbField: 'storyTitle', displayName: 'Title of the success story/case study' },
+                { dbField: 'enterprise', displayName: 'Enterprise' },
+                { dbField: 'netIncome', displayName: 'Net income', type: 'currency' },
+            ],
+        },
+        {
+            id: '4.4',
+            title: 'District level data on agriculture, livestock and farming situation',
+            description: 'District level account-type wise details: base items, crops, climate and livestock',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'districtLevelData',
+            format: 'custom',
+            customTemplate: 'district-level-data-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'items', displayName: 'Account Type' },
+                { dbField: 'information', displayName: 'Remarks' },
+                { dbField: 'season', displayName: 'Season' },
+                { dbField: 'type', displayName: 'Type' },
+                { dbField: 'cropName', displayName: 'Name of Crop' },
+                { dbField: 'livestockName', displayName: 'Name of Livestock' },
+            ],
+        },
+        {
+            id: '4.5',
+            title: 'Details of operational area / villages',
+            description: 'District & Village: taluk, block, village, crops, problems, thrust areas',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'operationalArea',
+            format: 'custom',
+            customTemplate: 'operational-area-details-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK' },
+                { dbField: 'taluk', displayName: 'Name of Taluk' },
+                { dbField: 'block', displayName: 'Name of the block' },
+                { dbField: 'village', displayName: 'Name of the villages' },
+                { dbField: 'majorCrops', displayName: 'Major crops' },
+                { dbField: 'majorProblems', displayName: 'Major problems identified (crop-wise)' },
+                { dbField: 'thrustAreas', displayName: 'Identified Thrust Areas' },
+            ],
+        },
+        {
+            id: '4.6',
+            title: 'Details of village adoption programme',
+            description: 'District & Village: adopted villages and action taken',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'villageAdoption',
+            format: 'custom',
+            customTemplate: 'village-adoption-programme-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK Name' },
+                { dbField: 'village', displayName: 'Name of village' },
+                { dbField: 'block', displayName: 'Block' },
+                { dbField: 'actionTaken', displayName: 'Action taken for development' },
+            ],
+        },
+        {
+            id: '4.7',
+            title: 'Priority thrust areas',
+            description: 'District & Village: priority thrust areas by KVK',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'priorityThrustArea',
+            format: 'custom',
+            customTemplate: 'priority-thrust-area-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK Name' },
+                { dbField: 'thrustArea', displayName: 'Thrust area' },
+            ],
+        },
+        {
+            id: '4.8',
+            title: 'Demonstration Units',
+            description: 'Performance of Demonstration Units (Other than Instructional Farm)',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'demonstrationUnit',
+            format: 'custom',
+            customTemplate: 'demonstration-unit',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'demoUnitName', displayName: 'Name of Demo Unit' },
+                { dbField: 'yearOfEstablishment', displayName: 'Year of Estt.' },
+                { dbField: 'area', displayName: 'Area (Sq. mt)' },
+                { dbField: 'varietyBreed', displayName: 'Variety/Breed' },
+                { dbField: 'produce', displayName: 'Produce' },
+                { dbField: 'quantity', displayName: 'Qty.' },
+                { dbField: 'costOfInputs', displayName: 'Cost of Inputs' },
+                { dbField: 'grossIncome', displayName: 'Gross Income' },
+                { dbField: 'remarks', displayName: 'Remarks' },
+            ],
+        },
+        {
+            id: '4.9',
+            title: 'Instructional Farm (crops)',
+            description: 'Performance of Instructional Farm (Crops)',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'instructionalFarmCrop',
+            format: 'custom',
+            customTemplate: 'instructional-farm-crop',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'seasonName', displayName: 'Season' },
+                { dbField: 'cropName', displayName: 'Name Of the Crop' },
+                { dbField: 'area', displayName: 'Area (ha)' },
+                { dbField: 'variety', displayName: 'Variety' },
+                { dbField: 'typeOfProduce', displayName: 'Type of Produce' },
+                { dbField: 'quantity', displayName: 'Qty.' },
+                { dbField: 'costOfInputs', displayName: 'Cost of Inputs' },
+                { dbField: 'grossIncome', displayName: 'Gross Income' },
+                { dbField: 'remarks', displayName: 'Remarks' },
+            ],
+        },
+        {
+            id: '4.10',
+            title: 'Production Units',
+            description: 'Performance of Production Units (Bio-agents/Bio-pesticides/Bio-fertilizers etc.,)',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'productionUnit',
+            format: 'custom',
+            customTemplate: 'production-unit',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'productName', displayName: 'Name of the Product' },
+                { dbField: 'quantity', displayName: 'Qty.(Kg)' },
+                { dbField: 'costOfInputs', displayName: 'Cost of Inputs' },
+                { dbField: 'grossIncome', displayName: 'Gross Income' },
+                { dbField: 'remarks', displayName: 'Remarks' },
+            ],
+        },
+        {
+            id: '4.11',
+            title: 'Instructional Farm (livestock)',
+            description: 'Performance of Instructional Farm (livestock and fisheries production)',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'instructionalFarmLivestock',
+            format: 'custom',
+            customTemplate: 'instructional-farm-livestock',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'animalName', displayName: 'Name of the Animal/Bird/Aquatics' },
+                { dbField: 'speciesBreed', displayName: 'Species / Breed / Variety' },
+                { dbField: 'typeOfProduce', displayName: 'Type of Produce' },
+                { dbField: 'quantity', displayName: 'Qty.' },
+                { dbField: 'costOfInputs', displayName: 'Cost of Inputs' },
+                { dbField: 'grossIncome', displayName: 'Gross Income' },
+                { dbField: 'remarks', displayName: 'Remarks' },
+            ],
+        },
+        {
+            id: '4.12',
+            title: 'Hostel Facilities',
+            description: 'Utilization of Hostel Facilities Accommodation Available (No. of Beds)',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'hostelUtilization',
+            format: 'custom',
+            customTemplate: 'hostel-utilization',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'months', displayName: 'Months' },
+                { dbField: 'traineesStayed', displayName: 'No. of Trainees Stayed' },
+                { dbField: 'traineeDays', displayName: 'Trainee Days (Days Stayed)' },
+                { dbField: 'reasonForShortFall', displayName: 'Reason for Short Fall (if any)' },
+            ],
+        },
+        {
+            id: '4.13',
+            title: 'Staff Quarters',
+            description: 'Utilization of Staff Quarters Whether Staff Quarters has been Completed',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'staffQuartersUtilization',
+            format: 'custom',
+            customTemplate: 'staff-quarters',
+            filters: {
+                dateFields: ['dateOfCompletion', 'createdAt'],
+            },
+            fields: [
+                { dbField: 'dateOfCompletion', displayName: 'Date of Completion' },
+                { dbField: 'numberOfQuarters', displayName: 'No. of Staff Quarters' },
+                { dbField: 'occupancyDetails', displayName: 'Occupancy Details' },
+                { dbField: 'remark', displayName: 'Remark' },
+            ],
+        },
+        {
+            id: '4.14',
+            title: 'Rain Water Harvesting',
+            description: 'Activities under Rain Water Harvesting structure and micro irrigation system',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'rainwaterHarvesting',
+            format: 'custom',
+            customTemplate: 'rainwater-harvesting',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'trainingProgrammes', displayName: 'No of training programme conducted' },
+                { dbField: 'demonstrations', displayName: 'No. of demonstrations' },
+                { dbField: 'plantMaterial', displayName: 'No. of plant material produced' },
+                { dbField: 'farmerVisits', displayName: 'Visit by the farmers (No.)' },
+                { dbField: 'officialVisits', displayName: 'Visit by the officials (No.)' },
+            ],
+        },
+        
+        {
+            id: '4.15',
+            title: 'Budget details of KVKs',
+            description: 'Financial: salary, general and capital allocation breakdown',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'budgetDetail',
+            format: 'custom',
+            customTemplate: 'financial-budget-details-report',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK' },
+                { dbField: 'salaryAllocation', displayName: 'Salary Allocation' },
+                { dbField: 'grandTotalAllocation', displayName: 'Grand Total' },
+            ],
+        },
+        {
+            id: '4.16',
+            title: 'Project-wise Budget details of KVKs',
+            description: 'Financial: project budgets, funding agency, expenditure and unspent balance',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'projectBudget',
+            format: 'custom',
+            customTemplate: 'financial-project-budget-report',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'Name of KVK' },
+                { dbField: 'projectDisplayName', displayName: 'Name of project' },
+                { dbField: 'budgetReleased', displayName: 'Budget released' },
+                { dbField: 'expenditure', displayName: 'Expenditure' },
+            ],
+        },
+        {
+            id: '4.17',
+            title: 'Revolving Fund',
+            description: 'Financial: opening balance, income, expenditure and closing',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'revolvingFund',
+            format: 'custom',
+            customTemplate: 'financial-revolving-fund-report',
+            filters: {
+                dateFields: ['reportingYear'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'Name of KVK' },
+                { dbField: 'openingBalance', displayName: 'Opening balance' },
+                { dbField: 'closingBalance', displayName: 'Closing' },
+            ],
+        },
+        {
+            id: '4.18',
+            title: 'Revenue generation',
+            description: 'Financial: income by head and sponsoring agency',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'revenueGeneration',
+            format: 'custom',
+            customTemplate: 'financial-revenue-generation-report',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'KVK' },
+                { dbField: 'headName', displayName: 'Name of Head' },
+                { dbField: 'income', displayName: 'Income (Rs.)' },
+            ],
+        },
+        {
+            id: '4.19',
+            title: 'Resource generation',
+            description: 'Financial: programmes, sources of fund and infrastructure',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'resourceGeneration',
+            format: 'custom',
+            customTemplate: 'financial-resource-generation-report',
+            filters: {
+                dateFields: ['startDate', 'endDate'],
+                yearFields: ['startDate'],
+            },
+            fields: [
+                { dbField: 'kvkName', displayName: 'Name of KVK' },
+                { dbField: 'programmeName', displayName: 'Name of the programme' },
+                { dbField: 'amount', displayName: 'Amount (Rs. lakhs)' },
+            ],
+        },
+        {
+            id: '4.20',
+            title: 'Functional Linkage',
+            description: 'Functional Linkage with Different Organisations',
+            subsection: true,
+            parentSectionId: '4',
+            dataSource: 'functionalLinkage',
+            format: 'custom',
+            customTemplate: 'functional-linkage',
+            filters: {
+                dateFields: ['createdAt'],
+                yearFields: ['reportingYear'],
+            },
+            fields: [
+                { dbField: 'organizationName', displayName: 'Name of Organization' },
+                { dbField: 'natureOfLinkage', displayName: 'Nature of Linkage' },
+            ],
+        },
+        // ── Miscellaneous Information ────────────────────────────────
+        {
+            id: '5.1',
+            title: 'Prevalent Diseases in Crops',
+            description: 'Prevalent diseases reported in crops by KVKs',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'prevalentDiseasesCrops',
+            format: 'custom',
+            customTemplate: 'misc-prevalent-diseases-crops',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '5.2',
+            title: 'Prevalent Diseases in Livestock',
+            description: 'Prevalent diseases reported in livestock by KVKs',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'prevalentDiseasesLivestock',
+            format: 'custom',
+            customTemplate: 'misc-prevalent-diseases-livestock',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '5.3',
+            title: 'Nehru Yuva Kendra',
+            description: 'NYK training programmes conducted by KVKs',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'nykTraining',
+            format: 'custom',
+            customTemplate: 'misc-nyk-training',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '5.4',
+            title: 'PPV & FRA Sensitization Training Programme',
+            description: 'PPV & FRA training and awareness programmes with participant demographics',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'ppvFraTraining',
+            format: 'custom',
+            customTemplate: 'misc-ppv-fra-training',
+            filters: { dateFields: ['programmeDate', 'createdAt'] },
+            fields: [],
+        },
+        {
+            id: '5.5',
+            title: 'PPV & FRA Sensitization Farmer Details',
+            description: 'Plant varieties registered by farmers under PPV & FRA',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'ppvFraPlantVarieties',
+            format: 'custom',
+            customTemplate: 'misc-ppv-fra-plant-varieties',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '5.6',
+            title: 'List of VIP Visitors',
+            description: 'MP/MLA/DM/VC/Zila Parishad/Other Head of Organization/Foreigners who visited KVKs',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'vipVisitors',
+            format: 'custom',
+            customTemplate: 'misc-vip-visitors',
+            filters: { dateFields: ['dateOfVisit', 'createdAt'] },
+            fields: [],
+        },
+        {
+            id: '5.7',
+            title: 'RAWE/FET/FIT Attachment Training',
+            description: 'Details of attachment training (RAWE) through KVK',
+            subsection: true,
+            parentSectionId: '5',
+            dataSource: 'raweFetFit',
+            format: 'custom',
+            customTemplate: 'misc-rawe-fet-fit',
+            filters: { dateFields: ['startDate', 'endDate', 'createdAt'] },
+            fields: [],
+        },
+        // ── Digital Information ──────────────────────────────────────
+        {
+            id: '6.1',
+            title: 'Details of Mobile App',
+            description: 'Mobile apps developed by KVKs with languages and download stats',
+            subsection: true,
+            parentSectionId: '6',
+            dataSource: 'mobileApp',
+            format: 'custom',
+            customTemplate: 'di-mobile-app',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '6.2',
+            title: 'Details of KVK Web Portal',
+            description: 'KVK web portal visitor and farmer registration stats',
+            subsection: true,
+            parentSectionId: '6',
+            dataSource: 'webPortal',
+            format: 'custom',
+            customTemplate: 'di-web-portal',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '6.3',
+            title: 'Details of Kisan Sarathi',
+            description: 'Kisan Sarathi portal farmer registration and phone call details',
+            subsection: true,
+            parentSectionId: '6',
+            dataSource: 'kisanSarathi',
+            format: 'custom',
+            customTemplate: 'di-kisan-sarathi',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '6.4',
+            title: 'Kisan Mobile Advisory Services (KMAS)',
+            description: 'm-Kisan Portal/National Farmers Portal/SMS Portal advisory details',
+            subsection: true,
+            parentSectionId: '6',
+            dataSource: 'kmas',
+            format: 'custom',
+            customTemplate: 'di-kmas',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        {
+            id: '6.5',
+            title: 'Details of messages sent through other channels',
+            description: 'Advisories through Text/WhatsApp/Weather/Social media channels',
+            subsection: true,
+            parentSectionId: '6',
+            dataSource: 'msgDetails',
+            format: 'custom',
+            customTemplate: 'di-msg-details',
+            filters: { dateFields: ['createdAt'] },
+            fields: [],
+        },
+        // ── Swachhta Bharat Abhiyaan ────────────────────────────────
+        {
+            id: '7.1',
+            title: 'Observation of Swachhta hi Sewa SBA',
+            description: 'Swachhta hi Sewa observation with participant counts',
+            subsection: true,
+            parentSectionId: '7',
+            dataSource: 'swachhtaSewa',
+            format: 'custom',
+            customTemplate: 'swachhta-sewa',
+            filters: { dateFields: ['createdAt'] },
+            fields: [
+                { dbField: 'kvk.state.stateName', displayName: 'Name of State' },
+                { dbField: 'kvk.district.districtName', displayName: 'Name of District' },
+                { dbField: 'observationDate', displayName: 'Date/ Duration of Observation', type: 'date' },
+                { dbField: 'totalActivities', displayName: 'Total No of Activities undertaken' },
+                { dbField: 'staffCount', displayName: 'Staffs' },
+                { dbField: 'farmerCount', displayName: 'Farmers' },
+                { dbField: 'othersCount', displayName: 'Others' },
+            ],
+        },
+        {
+            id: '7.2',
+            title: 'Observation of Swachta Pakhwada',
+            description: 'Swachhta Pakhwada observation with participant counts',
+            subsection: true,
+            parentSectionId: '7',
+            dataSource: 'swachhtaPakhwada',
+            format: 'custom',
+            customTemplate: 'swachhta-pakhwada',
+            filters: { dateFields: ['createdAt'] },
+            fields: [
+                { dbField: 'kvk.state.stateName', displayName: 'Name of State' },
+                { dbField: 'kvk.district.districtName', displayName: 'Name of District' },
+                { dbField: 'observationDate', displayName: 'Date/ Duration of Observation', type: 'date' },
+                { dbField: 'totalActivities', displayName: 'Total No of Activities undertaken' },
+                { dbField: 'staffCount', displayName: 'Staffs' },
+                { dbField: 'farmerCount', displayName: 'Farmers' },
+                { dbField: 'othersCount', displayName: 'Others' },
+            ],
+        },
+        {
+            id: '7.3',
+            title: 'Swachhta Budget',
+            description: 'Quarterly expenditure on vermicomposting and other swachhta activities',
+            subsection: true,
+            parentSectionId: '7',
+            dataSource: 'swachhtaBudget',
+            format: 'custom',
+            customTemplate: 'swachhta-budget',
+            filters: { dateFields: ['createdAt'] },
+            fields: [
+                { dbField: 'kvk.state.stateName', displayName: 'Name of State' },
+                { dbField: 'kvk.district.districtName', displayName: 'Name of District' },
+                { dbField: 'vermiVillageCovered', displayName: 'Vermi - No of village covered' },
+                { dbField: 'vermiTotalExpenditure', displayName: 'Vermi - Total Expenditure(Rs.in Lakhs)' },
+                { dbField: 'otherVillageCovered', displayName: 'Other - No of village covered' },
+                { dbField: 'otherTotalExpenditure', displayName: 'Other - Total Expenditure(Rs.in Lakhs)' },
+            ],
+        },
+        // ── Meetings ────────────────────────────────────────────────
+        {
+            id: '8.1',
+            title: 'SAC Meetings',
+            description: 'Scientific Advisory Committee meeting details with recommendations',
+            subsection: true,
+            parentSectionId: '8',
+            dataSource: 'sacMeetings',
+            format: 'custom',
+            customTemplate: 'meetings-sac',
+            filters: { dateFields: ['createdAt'] },
+            fields: [
+                { dbField: 'kvk.state.stateName', displayName: 'Name of State' },
+                { dbField: 'kvk.district.districtName', displayName: 'Name of District' },
+                { dbField: 'startDate', displayName: 'Start Date', type: 'date' },
+                { dbField: 'endDate', displayName: 'End Date', type: 'date' },
+                { dbField: 'numberOfParticipants', displayName: 'No of participants' },
+                { dbField: 'statutoryMembersPresent', displayName: 'Total statutory members present' },
+                { dbField: 'salientRecommendations', displayName: 'Salient recommendations' },
+                { dbField: 'actionTaken', displayName: 'Action Taken' },
+                { dbField: 'reason', displayName: 'If not, State reason' },
+            ],
+        },
+        {
+            id: '8.2',
+            title: 'Other Meetings',
+            description: 'Other meetings related to ATARI with agenda and representatives',
+            subsection: true,
+            parentSectionId: '8',
+            dataSource: 'otherMeetings',
+            format: 'custom',
+            customTemplate: 'meetings-other',
+            filters: { dateFields: ['createdAt'] },
+            fields: [
+                { dbField: 'kvk.state.stateName', displayName: 'Name of State' },
+                { dbField: 'kvk.district.districtName', displayName: 'Name of District' },
+                { dbField: 'meetingDate', displayName: 'Date', type: 'date' },
+                { dbField: 'typeOfMeeting', displayName: 'Type of Meeting' },
+                { dbField: 'agenda', displayName: 'Agenda' },
+                { dbField: 'representativeFromAtari', displayName: 'Representative from ATARI' },
+            ],
+        },
+    ],
+};
+
+/**
+ * Get section configuration by ID
+ */
+function getSectionConfig(sectionId) {
+    return reportConfig.sections.find(s => s.id === sectionId);
+}
+
+/**
+ * Get all sections
+ */
+function getAllSections() {
+    return reportConfig.sections;
+}
+
+/**
+ * Get sections by data source
+ */
+function getSectionsByDataSource(dataSource) {
+    return reportConfig.sections.filter(s => s.dataSource === dataSource);
+}
+
+function getSectionByCustomTemplate(customTemplate) {
+    return reportConfig.sections.find(s => s.customTemplate === customTemplate);
+}
+
+/**
+ * Validate section IDs
+ */
+function validateSectionIds(sectionIds) {
+    const validIds = reportConfig.sections.map(s => s.id);
+    const invalidIds = sectionIds.filter(id => !validIds.includes(id));
+    if (invalidIds.length > 0) {
+        throw new Error(`Invalid section IDs: ${invalidIds.join(', ')}`);
+    }
+    return true;
+}
+
+/**
+ * Top-level report chapters. The number is the chapter index shown in the
+ * index/TOC ("1. About KVK"); it maps to each section's `parentSectionId`.
+ * Kept in ascending order so chapters always render 1→8.
+ */
+const PARENT_SECTIONS = [
+    { id: '1', title: 'About KVK' },
+    { id: '2', title: 'Achievements' },
+    { id: '3', title: 'Projects' },
+    { id: '4', title: 'Performance' },
+    { id: '5', title: 'Miscellaneous' },
+    { id: '6', title: 'Digital Information' },
+    { id: '7', title: 'Swachh Bharat Abhiyaan' },
+    { id: '8', title: 'Meetings' },
+];
+
+function _letter(i) {
+    return String.fromCharCode(65 + i); // 0 -> A, 1 -> B, ...
+}
+
+/**
+ * Build the index/TOC structure and per-section heading labels.
+ *
+ * Two numbering modes coexist:
+ *  - Chapters present in REPORT_INDEX_TAXONOMY render as curated 2-level groups
+ *    with lettered features (e.g. 1.1 Basic Information → 1.1.A KVKs Details).
+ *  - Every other chapter renders as a flat sequential list (`<chapter>.<n>`),
+ *    because the raw `section.id` values are unreliable (gaps, duplicates and
+ *    prefixes that don't match `parentSectionId`, e.g. id "2.16" under parent
+ *    "3").
+ *
+ * Numbering is display-only: the real `section.id` stays the stable key for
+ * data lookup and TOC anchors. Chapters with no selected sections are skipped,
+ * and chapter numbers are assigned sequentially over the chapters that remain.
+ *
+ * @param {Array<{id:string, parentSectionId:string, title:string}>} sections - selected, document order
+ * @returns {{
+ *   headingById: Map<string,{number:string,title:string}>,  // section page heading
+ *   chapters: Array<object>                                  // TOC structure (see below)
+ * }}
+ */
+function buildSectionNumbering(sections) {
+    const headingById = new Map();
+    const selectedById = new Map(sections.map(s => [String(s.id), s]));
+    const consumed = new Set();
+    const chapters = [];
+    let chapterNumber = 0;
+
+    PARENT_SECTIONS.forEach((parent) => {
+        const taxonomy = REPORT_INDEX_TAXONOMY[parent.id];
+
+        if (taxonomy) {
+            const chapter = _buildTaxonomyChapter(
+                parent, taxonomy, selectedById, consumed, headingById,
+            );
+            // Append any selected sections of this parent the taxonomy missed,
+            // so nothing is silently dropped from the report.
+            _appendLeftovers(chapter, parent.id, selectedById, consumed, headingById, (taxonomy.groups || []).length);
+            if (chapter.groups.length === 0) return;
+            chapter.number = (chapterNumber += 1);
+            _renumberChapter(chapter, headingById);
+            chapters.push(chapter);
+        } else {
+            const children = sections.filter(
+                s => String(s.parentSectionId) === parent.id && !consumed.has(String(s.id)),
+            );
+            if (children.length === 0) return;
+            const number = (chapterNumber += 1);
+            const chapter = {
+                type: 'flat',
+                id: parent.id,
+                title: parent.title,
+                number,
+                sections: children.map((section, i) => {
+                    const displayId = `${number}.${i + 1}`;
+                    headingById.set(String(section.id), {
+                        chapter: parent.title,
+                        sectionNumber: displayId,
+                        sectionTitle: section.title,
+                        featureNumber: null,
+                        featureTitle: null,
+                    });
+                    children[i]._displayId = displayId;
+                    return { sectionId: section.id, number: displayId, title: section.title };
+                }),
+            };
+            chapters.push(chapter);
+        }
+    });
+
+    return { headingById, chapters };
+}
+
+/** Build a curated chapter from taxonomy, keeping only groups/features with data. */
+function _buildTaxonomyChapter(parent, taxonomy, selectedById, consumed, headingById) {
+    const groups = [];
+    // `originalIndex` preserves each group's slot in the full taxonomy so its
+    // number (e.g. On Farm Trial = 2.2) stays stable even when an earlier group
+    // has no section yet and is skipped.
+    (taxonomy.groups || []).forEach((group, gi) => {
+        const features = (group.features || [])
+            .filter(f => selectedById.has(String(f.sectionId)))
+            .map(f => ({ label: f.label, sectionId: String(f.sectionId) }));
+        if (features.length === 0) return;
+        features.forEach(f => consumed.add(f.sectionId));
+        groups.push({ label: group.label, features, originalIndex: gi });
+    });
+    return { type: 'grouped', id: parent.id, title: taxonomy.title || parent.title, groups };
+}
+
+/** Append selected-but-unmapped sections of a parent as trailing groups. */
+function _appendLeftovers(chapter, parentId, selectedById, consumed, headingById, taxonomyGroupCount = 0) {
+    const leftovers = [];
+    selectedById.forEach((section, id) => {
+        if (String(section.parentSectionId) === parentId && !consumed.has(id)) {
+            leftovers.push(section);
+        }
+    });
+    if (leftovers.length === 0) return;
+    // Number leftovers after every taxonomy slot so they never collide with a
+    // curated group's number.
+    leftovers.forEach((section, i) => {
+        consumed.add(String(section.id));
+        chapter.groups.push({
+            label: section.title,
+            features: [{ label: section.title, sectionId: String(section.id) }],
+            originalIndex: taxonomyGroupCount + i,
+        });
+    });
+}
+
+/** Assign final group/feature numbers and per-section heading labels. */
+function _renumberChapter(chapter, headingById) {
+    chapter.groups.forEach((group, gi) => {
+        // Use the taxonomy slot when available so numbers stay stable across
+        // skipped (sectionless) groups; fall back to render order otherwise.
+        const slot = group.originalIndex != null ? group.originalIndex : gi;
+        group.number = `${chapter.number}.${slot + 1}`;
+        // Count how many features point at each section to decide heading level.
+        const refCount = group.features.reduce((m, f) => {
+            m[f.sectionId] = (m[f.sectionId] || 0) + 1;
+            return m;
+        }, {});
+        group.features.forEach((feature, fi) => {
+            feature.number = `${group.number}.${_letter(fi)}`;
+            // Section = group (e.g. "1.1 Basic Information"); subsection = feature
+            // (e.g. "1.1.A KVKs Details"). Shared sections show the group only.
+            const shared = refCount[feature.sectionId] > 1;
+            const entry = {
+                chapter: chapter.title,
+                sectionNumber: group.number,
+                sectionTitle: group.label,
+                featureNumber: shared ? null : feature.number,
+                featureTitle: shared ? null : feature.label,
+            };
+            // First feature for a section wins the page heading.
+            if (!headingById.has(feature.sectionId)) {
+                headingById.set(feature.sectionId, entry);
+            }
+        });
+    });
+}
+
+module.exports = {
+    reportConfig,
+    getSectionConfig,
+    getAllSections,
+    getSectionsByDataSource,
+    getSectionByCustomTemplate,
+    validateSectionIds,
+    PARENT_SECTIONS,
+    buildSectionNumbering,
+};

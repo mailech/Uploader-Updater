@@ -1,0 +1,15 @@
+model FunctionalLinkage {
+  functionalLinkageId String      @id @default(uuid()) @map("functional_linkage_id")
+  kvkId               Int
+  reportingYear DateTime? @map("reporting_year")
+organizationName    String      @map("organization_name")
+  natureOfLinkage     String      @map("nature_of_linkage")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  kvk                 Kvk         @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+@@index([kvkId])
+  @@index([reportingYear])
+  @@index([organizationName])
+  @@index([createdAt])
+  @@map("functional_linkage")
+}

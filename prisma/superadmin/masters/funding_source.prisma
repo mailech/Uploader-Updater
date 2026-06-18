@@ -1,0 +1,10 @@
+model FundingSourceMaster {
+  fundingSourceId Int                   @id @default(autoincrement()) @map("funding_source_id")
+  name            String                @unique @map("name")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+  trainings       TrainingAchievement[]
+  kvkOfts         Kvkoft[]
+
+  @@map("funding_source_master")
+}

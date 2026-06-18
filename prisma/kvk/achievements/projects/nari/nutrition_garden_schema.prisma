@@ -1,0 +1,67 @@
+model NariNutritionalGarden {
+  nariNutritionalGardenId Int @id @default(autoincrement()) @map("nari_nutritional_garden_id")
+
+  kvkId Int
+  kvk   Kvk @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+
+  reportingYear DateTime? @map("reporting_year")
+
+  activityId Int          @map("activity_id")
+  activity   NariActivity @relation(fields: [activityId], references: [nariActivityId])
+
+  nameOfNutriSmartVillage   String              @map("name_of_nutri_smart_village")
+  typeOfNutritionalGardenId Int                 @map("type_of_nutritional_garden_id")
+  typeOfNutritionalGarden   NutritionGardenType @relation(fields: [typeOfNutritionalGardenId], references: [nutritionGardenTypeId])
+
+  number  Int   @map("number")
+  areaSqm Float @map("area_sqm")
+
+  generalM Int @default(0) @map("general_m")
+  generalF Int @default(0) @map("general_f")
+  obcM     Int @default(0) @map("obc_m")
+  obcF     Int @default(0) @map("obc_f")
+  scM      Int @default(0) @map("sc_m")
+  scF      Int @default(0) @map("sc_f")
+  stM      Int @default(0) @map("st_m")
+  stF      Int @default(0) @map("st_f")
+
+  status String @default("ONGOING") @map("status")
+  results NariNutritionalGardenResult[]
+
+  @@index([kvkId])
+  @@index([activityId])
+  @@map("nari_nutritional_garden")
+}
+
+model NutritionGardenType {
+  nutritionGardenTypeId Int    @id @default(autoincrement()) @map("nutrition_garden_type_id")
+  name                  String @unique @map("name")
+
+  nariNutritionalGardens NariNutritionalGarden[]
+
+  @@map("nutrition_garden_type")
+}
+
+
+
+model NariNutritionalGardenResult {
+  nariNutritionalGardenResultId Int @id @default(autoincrement()) @map("nari_nutritional_garden_result_id")
+
+  nariNutritionalGardenId Int @map("nari_nutritional_garden_id")
+  nariNutritionalGarden   NariNutritionalGarden @relation(fields: [nariNutritionalGardenId], references: [nariNutritionalGardenId], onDelete: Cascade)
+
+  reportingYear DateTime? @map("reporting_year")
+  cropName      String    @map("name_of_crops")
+  variety       String    @map("varieties")
+  areaSqm       Float     @map("area_grown_sqm")
+  productionKg  Float     @map("production_kg")
+  consumptionKg Float     @map("consumption_kg")
+  sellKg        Float     @map("sell_of_produce_kg")
+  income        Float     @map("income_from_sell_of_produce")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([nariNutritionalGardenId])
+  @@map("nari_nutritional_garden_result")
+}

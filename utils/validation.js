@@ -1,0 +1,167 @@
+/**
+ * Validate email format
+ * @param {string} email - Email address to validate
+ * @returns {boolean} True if email is valid
+ */
+function validateEmail(email) {
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+
+  // Basic email regex pattern
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
+
+/**
+ * Validate password strength
+ * @param {string} password - Password to validate
+ * @returns {object} { valid: boolean, errors: string[] }
+ */
+function validatePassword(password) {
+  const errors = [];
+
+  if (!password || typeof password !== 'string') {
+    errors.push('Password is required');
+    return { valid: false, errors };
+  }
+
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+
+  if (password.length > 128) {
+    errors.push('Password must be less than 128 characters');
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Normalize string input (trim only). Blocklist-based sanitization was removed:
+ * it is insufficient for XSS (bypassable via encoded chars, mixed case,
+ * whitespace, etc.). This API serves JSON with Content-Type: application/json;
+ * XSS prevention relies on that and on context-aware output encoding at
+ * render time (frontend). Use a vetted library (e.g. DOMPurify/sanitize-html)
+ * where output is injected into HTML.
+ *
+ * @param {string} input - String to normalize
+ * @returns {string} Trimmed string
+ */
+function sanitizeInput(input) {
+  if (input === null || input === undefined) {
+    return '';
+  }
+  if (typeof input === 'string') {
+    return input.trim();
+  }
+  return String(input);
+}
+
+/**
+ * Validate role ID
+ * @param {number} roleId - Role ID to validate
+ * @returns {boolean} True if roleId is valid
+ */
+function validateRoleId(roleId) {
+  // Accept any positive integer; existence is checked via DB in the service layer
+  return typeof roleId === 'number' && Number.isInteger(roleId) && roleId > 0;
+}
+
+/**
+ * Validate phone number (Indian format)
+ * @param {string} phoneNumber - Phone number to validate
+ * @returns {object} { valid: boolean, errors: string[] }
+ */
+function validatePhoneNumber(phoneNumber) {
+  const errors = [];
+
+  if (!phoneNumber) {
+    // Phone number is optional
+    return { valid: true, errors: [] };
+  }
+
+  if (typeof phoneNumber !== 'string') {
+    errors.push('Phone number must be a string');
+    return { valid: false, errors };
+  }
+
+  // Remove spaces, dashes, and common separators
+  const cleaned = phoneNumber.replace(/[\s\-()]/g, '');
+
+  // Check if it's a valid Indian phone number (10 digits, starting with 6/7/8/9)
+  const phoneRegex = /^[6-9]\d{9}$/;
+  
+  if (!phoneRegex.test(cleaned)) {
+    errors.push('Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Normalize optional Indian mobile: empty → null; otherwise 10 digits [6-9]…
+ * @param {*} value
+ * @param {string} [fieldName]
+ * @returns {string|null}
+ * @throws {Error} if non-empty but invalid
+ */
+function normalizeOptionalIndianMobile(value, fieldName = 'Mobile') {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const cleaned = String(value).replace(/[\s\-()]/g, '');
+  if (cleaned === '') {
+    return null;
+  }
+  const r = validatePhoneNumber(cleaned);
+  if (!r.valid) {
+    throw new Error(`${fieldName}: ${r.errors[0]}`);
+  }
+  return cleaned;
+}
+
+/**
+ * Required Indian mobile (10 digits, starts with 6–9).
+ * @param {*} value
+ * @param {string} [fieldName]
+ * @returns {string}
+ * @throws {Error}
+ */
+function normalizeRequiredIndianMobile(value, fieldName = 'Mobile') {
+  const cleaned = String(value ?? '').replace(/[\s\-()]/g, '');
+  if (!cleaned) {
+    throw new Error(`${fieldName} is required`);
+  }
+  const r = validatePhoneNumber(cleaned);
+  if (!r.valid) {
+    throw new Error(`${fieldName}: ${r.errors[0]}`);
+  }
+  return cleaned;
+}
+
+module.exports = {
+  validateEmail,
+  validatePassword,
+  sanitizeInput,
+  validateRoleId,
+  validatePhoneNumber,
+  normalizeOptionalIndianMobile,
+  normalizeRequiredIndianMobile,
+};

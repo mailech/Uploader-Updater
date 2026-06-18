@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KVK Data Import</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f6f7f9; color: #1f2937; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #6b7280; font-size: 14px; margin: 0 0 22px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .step { color: #9ca3af; font-weight: 600; margin-right: 6px; }
+  button { border: 0; border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .blue { background: #2563eb; color: #fff; }
+  .green { background: #16a34a; color: #fff; }
+  select, input[type=file] { font-size: 14px; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; background:#fff; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  th { color: #6b7280; font-weight: 600; }
+  .muted { color: #9ca3af; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .pill.ok { background:#dcfce7; color:#166534; }
+  .pill.warn { background:#fef3c7; color:#92400e; }
+  .pill.bad { background:#fee2e2; color:#991b1b; }
+  .box { border-radius:8px; padding:12px; font-size:13px; margin-top:10px; }
+  .box.warn { background:#fffbeb; border:1px solid #fde68a; }
+  .box.bad { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  .box.ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+  .headers { color:#6b7280; font-size:12px; max-width:480px; }
+  code { background:#f3f4f6; padding:1px 4px; border-radius:4px; }
+  .hide { display: none; }
+  details summary { cursor: pointer; color:#6b7280; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>KVK Data Import</h1>
+  <p class="sub">Upload a scraped <b>Excel (.xlsx)</b> or <b>JSON</b> file, review what will be imported and any issues, then choose the KVK and import. Data goes straight into the database and shows on the site.</p>
+
+  <!-- 1. Upload -->
+  <div class="card">
+    <h2><span class="step">1</span>Upload file</h2>
+    <div class="row">
+      <input type="file" id="file" accept=".xlsx,.xls,.json" />
+      <button class="blue" id="previewBtn" disabled>Preview</button>
+      <span id="fileName" class="muted"></span>
+    </div>
+  </div>
+
+  <div id="error" class="box bad hide"></div>
+
+  <!-- 2. Results -->
+  <div class="card hide" id="resultCard">
+    <h2><span class="step">2</span>What will be imported</h2>
+    <p id="summary"></p>
+    <div id="issues"></div>
+    <details>
+      <summary>See every form &amp; the fields detected</summary>
+      <table>
+        <thead><tr><th>Form (sheet)</th><th>Rows</th><th>Ready</th><th>Fields detected</th></tr></thead>
+        <tbody id="formsBody"></tbody>
+      </table>
+    </details>
+  </div>
+
+  <!-- 3. Import -->
+  <div class="card hide" id="importCard">
+    <h2><span class="step">3</span>Choose KVK &amp; import</h2>
+    <div class="row">
+      <select id="kvk"><option value="">— select KVK —</option></select>
+      <button class="green" id="commitBtn" disabled>Import into database</button>
+    </div>
+    <div id="commitResult"></div>
+  </div>
+</div>
+
+<script>
+let payload = null;     // { data } or { xlsxBase64 }
+let lastReport = null;
+
+const $ = (id) => document.getElementById(id);
+const fileEl = $('file'), previewBtn = $('previewBtn'), commitBtn = $('commitBtn');
+
+function showError(msg) { const e = $('error'); e.textContent = msg; e.classList.remove('hide'); }
+function clearError() { $('error').classList.add('hide'); }
+
+function readBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1] || '');
+    r.onerror = () => rej(new Error('Could not read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+fileEl.onchange = async () => {
+  clearError(); payload = null; previewBtn.disabled = true;
+  $('resultCard').classList.add('hide'); $('importCard').classList.add('hide'); $('commitResult').innerHTML = '';
+  const f = fileEl.files[0]; if (!f) return;
+  $('fileName').textContent = f.name;
+  try {
+    if (f.name.toLowerCase().endsWith('.json')) payload = { data: JSON.parse(await f.text()) };
+    else if (/\.xlsx?$/i.test(f.name)) payload = { xlsxBase64: await readBase64(f) };
+    else return showError('Please choose a .xlsx or .json file.');
+    previewBtn.disabled = false;
+  } catch (e) { showError('Could not read that file: ' + e.message); }
+};
+
+previewBtn.onclick = async () => {
+  clearError(); previewBtn.disabled = true; previewBtn.textContent = 'Reading…';
+  try {
+    const r = await fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Preview failed');
+    lastReport = j.report;
+    renderResult(j.report, j.sheets);
+  } catch (e) { showError(e.message); }
+  finally { previewBtn.disabled = false; previewBtn.textContent = 'Preview'; }
+};
+
+function renderResult(report, sheets) {
+  const readyForms = report.forms.filter(f => f.present && f.inserted > 0).length;
+  $('summary').innerHTML = '<b>' + report.totals.inserted + '</b> rows ready across <b>' + readyForms + '</b> forms.';
+
+  // issues
+  const unmapped = report.unmappedSheets || [];
+  const failing = report.forms.filter(f => (f.failed || 0) > 0 || f.supported === false);
+  let html = '';
+  if (!unmapped.length && !failing.length) {
+    html = '<div class="box ok">No mapping issues — everything maps cleanly. ✓</div>';
+  } else {
+    if (unmapped.length) html += '<div class="box warn"><b>Not imported — unsupported form(s):</b><ul>' + unmapped.map(s => '<li><code>' + s + '</code></li>').join('') + '</ul></div>';
+    if (failing.length) html += '<div class="box bad"><b>Rows that could not be saved:</b><ul>' + failing.map(f =>
+      '<li>' + f.sheet + (f.supported === false ? ' — not supported' : ' — ' + f.failed + ' row(s)') +
+      (f.failures || []).slice(0, 3).map(x => '<div class="muted">' + (x.row ? 'row ' + x.row + ': ' : '') + x.reason + '</div>').join('') + '</li>'
+    ).join('') + '</ul></div>';
+  }
+  if ((report.knownSkipped || []).length) html += '<p class="muted">Intentionally skipped (no table): ' + report.knownSkipped.join(', ') + '</p>';
+  $('issues').innerHTML = html;
+
+  // per-form table with detected fields
+  const bySheet = {}; (sheets || []).forEach(s => bySheet[s.sheet] = s);
+  const seen = new Set();
+  $('formsBody').innerHTML = report.forms.filter(f => f.present).map(f => {
+    const sh = bySheet[f.sheet] || { rows: '', headers: [] };
+    const hk = f.sheet; const dupNote = seen.has(hk) ? ' <span class="muted">(2nd mapping)</span>' : ''; seen.add(hk);
+    const ready = '<span class="pill ' + (f.failed ? 'bad' : 'ok') + '">' + f.inserted + '</span>';
+    return '<tr><td>' + f.sheet + dupNote + '</td><td>' + (sh.rows || '') + '</td><td>' + ready + '</td>' +
+      '<td class="headers">' + (sh.headers || []).join(', ') + '</td></tr>';
+  }).join('');
+
+  $('resultCard').classList.remove('hide');
+  $('importCard').classList.remove('hide');
+  loadKvks();
+}
+
+let kvksLoaded = false;
+async function loadKvks() {
+  if (kvksLoaded) return; kvksLoaded = true;
+  try {
+    const r = await fetch('/api/kvks'); const list = await r.json();
+    const sel = $('kvk');
+    list.forEach(k => { const o = document.createElement('option'); o.value = k.kvkId; o.textContent = k.kvkName + ' (#' + k.kvkId + ')'; sel.appendChild(o); });
+  } catch (e) { /* ignore */ }
+}
+
+$('kvk').onchange = () => { commitBtn.disabled = !$('kvk').value; };
+
+commitBtn.onclick = async () => {
+  clearError(); const kvkId = $('kvk').value; if (!kvkId) return;
+  if (!confirm('Import this data into the selected KVK? This writes to the live database.')) return;
+  commitBtn.disabled = true; commitBtn.textContent = 'Importing…';
+  try {
+    const r = await fetch('/api/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ kvkId: Number(kvkId) }, payload)) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Import failed');
+    const t = j.report.totals;
+    $('commitResult').innerHTML = '<div class="box ok">✅ Imported — <b>' + t.inserted + '</b> new rows, ' + t.skipped + ' already present, ' + t.failed + ' failed. It now shows on the site.</div>';
+  } catch (e) { showError(e.message); }
+  finally { commitBtn.disabled = false; commitBtn.textContent = 'Import into database'; }
+};
+</script>
+</body>
+</html>

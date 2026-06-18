@@ -1,0 +1,91 @@
+model Zone {
+  zoneId    Int              @id @default(autoincrement()) @map("zone_id")
+  zoneName  String           @unique @map("zone_name")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  districts DistrictMaster[]
+  kvks      Kvk[]
+  states    StateMaster[]
+  users     User[]
+
+  @@index([zoneId])
+  @@map("zone")
+}
+
+model StateMaster {
+  stateId   Int              @id @default(autoincrement()) @map("state_id")
+  stateName String           @map("state_name")
+  zoneId    Int
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  districts DistrictMaster[]
+  kvks      Kvk[]
+  zone      Zone             @relation(fields: [zoneId], references: [zoneId])
+  users     User[]
+
+  @@index([stateId])
+  @@index([zoneId])
+  @@index([stateName])
+  @@map("stateMaster")
+}
+
+model DistrictMaster {
+  districtId   Int         @id @default(autoincrement()) @map("district_id")
+  districtName String      @map("district_name")
+  stateId      Int
+  zoneId       Int
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  state        StateMaster @relation(fields: [stateId], references: [stateId])
+  zone         Zone        @relation(fields: [zoneId], references: [zoneId])
+  kvks         Kvk[]
+  orgs         OrgMaster[]
+  users        User[]
+  tspScsps     TspScsp[]
+  agriDroneDemonstrations KvkAgriDroneDemonstration[]
+
+  @@index([districtId])
+  @@index([stateId])
+  @@index([zoneId])
+  @@index([districtName])
+  @@map("districtMaster")
+}
+
+model OrgMaster {
+  orgId        Int                @id @default(autoincrement()) @map("org_id")
+  orgName      String?            @map("org_name")
+  districtId   Int?               @map("district_id")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  kvks         Kvk[]
+  district     DistrictMaster?    @relation(fields: [districtId], references: [districtId])
+  universities UniversityMaster[]
+  users        User[]
+
+  @@index([orgId])
+  @@index([districtId])
+  @@index([orgName])
+  @@map("orgMaster")
+}
+
+model UniversityMaster {
+  universityId   Int       @id @default(autoincrement()) @map("university_id")
+  universityName String    @map("university_name")
+  orgId          Int       @map("org_id")
+  hostMobile     String?   @map("host_mobile")
+  hostLandline   String?   @map("host_landline")
+  hostFax        String?   @map("host_fax")
+  hostEmail      String?   @map("host_email")
+  hostAddress    String?   @map("host_address")
+  hostOrg        String    @map("host_org")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  kvks           Kvk[]
+  organization   OrgMaster @relation(fields: [orgId], references: [orgId])
+  users          User[]
+
+  @@index([universityId])
+  @@index([orgId])
+  @@index([universityName])
+  @@map("universityMaster")
+}

@@ -1,0 +1,26 @@
+model Season {
+  seasonId                   Int                          @id @default(autoincrement()) @map("season_id")
+  seasonName                 String                       @unique @map("season_name")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @updatedAt @map("updated_at")
+  cfldTechnicalParameters    CfldTechnicalParameter[]
+  craCropingSystems          CraCropingSystem[]
+  craFarmingSystems          CraFarmingSystem[]
+  csisa                      Csisa[]
+  demonstrationInfo          DemonstrationInfo[]
+  extensionActivityOrganized ExtensionActivityOrganized[]
+  cfldCrops                  FLDCropMaster[]
+  kvkBudgetUtilizations      KvkBudgetUtilization[]
+  kvkFldIntroductions        KvkFldIntroduction[]
+  kvkOfts                    Kvkoft[]
+  seedHubPrograms            KvkSeedHubProgram[]
+  nicraDetails               NicraDetails[]
+  soilDataInformation        SoilDataInformation[]
+  instructionalFarmCrops     InstructionalFarmCrop[]
+  craDetails                 CraDetails[]
+  nariBioFortifiedCrops      NariBioFortifiedCrop[]
+
+  @@index([seasonId])
+  @@index([seasonName])
+  @@map("season")
+}

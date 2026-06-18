@@ -1,0 +1,24 @@
+model NicraPiCopi {
+  nicraPiCopiId Int @id @default(autoincrement()) @map("nicra_pi_copi_id")
+  kvkId         Int @map("kvk_id")
+  kvk           Kvk @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+
+  startDate DateTime @map("start_date")
+  endDate   DateTime @map("end_date")
+  piTypeId  Int?     @map("pi_type_id")
+  piType    NicraPiTypeMaster? @relation(fields: [piTypeId], references: [nicraPiTypeId], onDelete: SetNull, onUpdate: Cascade)
+  name      String   @map("name")
+
+  @@index([kvkId])
+  @@index([piTypeId])
+  @@map("nicra_pi_copi")
+}
+
+model NicraPiTypeMaster {
+  nicraPiTypeId Int    @id @default(autoincrement()) @map("nicra_pi_type_id")
+  name          String @unique @map("name")
+
+  nicraPiCopi NicraPiCopi[]
+
+  @@map("nicra_pi_type_master")
+}

@@ -1,0 +1,80 @@
+enum FldStatus {
+  ONGOING
+  COMPLETED
+  TRANSFERRED_TO_NEXT_YEAR
+}
+
+model KvkFldIntroduction {
+  kvkFldId                    Int                         @id @default(autoincrement()) @map("kvk_fld_id")
+  kvkId                       Int
+  kvkStaffId                  Int
+  seasonId                    Int?
+  sectorId                    Int?
+  thematicAreaId              Int?
+  categoryId                  Int?
+  subCategoryId               Int?
+  cropId                      Int?
+  fldName                     String                      @map("fld_name")
+  noOfDemonstration           Int                         @map("no_of_demonstration")
+  quantity                    Float                       @map("quantity")
+  unit                        String?                     @map("unit")
+  startDate                   DateTime                    @map("start_date")
+  expectedCompletionDate      DateTime?                   @map("expected_completion_date")
+  generalM                    Int                         @map("general_m")
+  generalF                    Int                         @map("general_f")
+  obcM                        Int                         @map("obc_m")
+  obcF                        Int                         @map("obc_f")
+  scM                         Int                         @map("sc_m")
+  scF                         Int                         @map("sc_f")
+  stM                         Int                         @map("st_m")
+  stF                         Int                         @map("st_f")
+  ongoingCompleted            FldStatus                   @default(ONGOING) @map("ongoing_completed")
+  createdAt                   DateTime                    @default(now()) @map("created_at")
+  updatedAt                   DateTime                    @updatedAt @map("updated_at")
+  fldExtensions               FldExtension[]
+  fldResult                   KvkFldResult?
+  fldTechnicalFeedbacks       FldTechnicalFeedback[]
+  kvkExtensionActivities      KvkExtensionActivity[]
+  category                    FldCategory?                @relation(fields: [categoryId], references: [categoryId], onDelete: SetNull)
+  crop                        FldCrop?                    @relation(fields: [cropId], references: [cropId], onDelete: SetNull)
+  kvk                         Kvk                         @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+  kvkStaff                    KvkStaff                    @relation(fields: [kvkStaffId], references: [kvkStaffId])
+season                      Season?                     @relation(fields: [seasonId], references: [seasonId], onDelete: SetNull)
+  sector                      Sector?                     @relation(fields: [sectorId], references: [sectorId], onDelete: SetNull)
+  subCategory                 FldSubcategory?             @relation(fields: [subCategoryId], references: [subCategoryId], onDelete: SetNull)
+  thematicArea                FldThematicArea?            @relation(fields: [thematicAreaId], references: [thematicAreaId], onDelete: SetNull)
+  kvkOtherExtensionActivities KvkOtherExtensionActivity[]
+
+  @@index([kvkId])
+  @@index([seasonId])
+  @@index([sectorId])
+  @@index([thematicAreaId])
+  @@index([categoryId])
+  @@index([subCategoryId])
+  @@index([cropId])
+  @@index([kvkStaffId])
+  @@index([expectedCompletionDate])
+  @@map("kvk_fld_introduction")
+}
+
+model KvkFldResult {
+  fldResultId              Int                @id @default(autoincrement()) @map("fld_result_id")
+  kvkFldId                 Int                @unique @map("kvk_fld_id")
+  demoYield                Float              @map("demo_yield")
+  checkYield               Float              @map("check_yield")
+  increasePercent          Float              @map("increase_percent")
+  demoGrossCost            Float              @map("demo_gross_cost")
+  demoGrossReturn          Float              @map("demo_gross_return")
+  demoNetReturn            Float              @map("demo_net_return")
+  demoBcr                  Float              @map("demo_bcr")
+  checkGrossCost           Float              @map("check_gross_cost")
+  checkGrossReturn         Float              @map("check_gross_return")
+  checkNetReturn           Float              @map("check_net_return")
+  checkBcr                 Float              @map("check_bcr")
+  createdAt                DateTime           @default(now()) @map("created_at")
+  updatedAt                DateTime           @updatedAt @map("updated_at")
+  fld                      KvkFldIntroduction @relation(fields: [kvkFldId], references: [kvkFldId], onDelete: Cascade)
+
+  @@index([kvkFldId])
+  @@map("kvk_fld_result")
+}

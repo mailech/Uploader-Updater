@@ -1,0 +1,82 @@
+model Sector {
+  sectorId            Int                  @id @default(autoincrement()) @map("sector_id")
+  sectorName          String               @unique @map("sector_name")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  categories          FldCategory[]
+  kvkFldIntroductions KvkFldIntroduction[]
+  subCategories       FldSubcategory[]
+  thematicAreas       FldThematicArea[]
+
+  @@index([sectorId])
+  @@index([sectorName])
+  @@map("sector")
+}
+
+model FldThematicArea {
+  thematicAreaId      Int                  @id @default(autoincrement()) @map("thematic_area_id")
+  thematicAreaName    String               @map("thematic_area_name")
+  sectorId            Int
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  kvkFldIntroductions KvkFldIntroduction[]
+  sector              Sector               @relation(fields: [sectorId], references: [sectorId], onDelete: Cascade)
+
+  @@index([sectorId])
+  @@index([thematicAreaName])
+  @@map("thematic_area")
+}
+
+model FldCategory {
+  categoryId          Int                  @id @default(autoincrement()) @map("category_id")
+  categoryName        String               @map("category_name")
+  sectorId            Int
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  sector              Sector               @relation(fields: [sectorId], references: [sectorId], onDelete: Cascade)
+  crops               FldCrop[]
+  kvkFldIntroductions KvkFldIntroduction[]
+  subCategories       FldSubcategory[]
+
+  @@index([sectorId])
+  @@index([categoryName])
+  @@map("category")
+}
+
+model FldSubcategory {
+  subCategoryId       Int                  @id @default(autoincrement()) @map("sub_category_id")
+  subCategoryName     String               @map("sub_category_name")
+  categoryId          Int
+  sectorId            Int
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  crops               FldCrop[]
+  kvkFldIntroductions KvkFldIntroduction[]
+  category            FldCategory          @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade)
+  sector              Sector               @relation(fields: [sectorId], references: [sectorId], onDelete: Cascade)
+
+  @@index([subCategoryId])
+  @@index([categoryId])
+  @@index([sectorId])
+  @@index([subCategoryName])
+  @@map("sub_category")
+}
+
+model FldCrop {
+  cropId                Int                    @id @default(autoincrement()) @map("crop_id")
+  cropName              String                 @map("crop_name")
+  categoryId            Int
+  subCategoryId         Int
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  category              FldCategory            @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade)
+  subCategory           FldSubcategory         @relation(fields: [subCategoryId], references: [subCategoryId], onDelete: Cascade)
+  fldTechnicalFeedbacks FldTechnicalFeedback[]
+  kvkBudgetUtilizations KvkBudgetUtilization[]
+  kvkFldIntroductions   KvkFldIntroduction[]
+
+  @@index([categoryId])
+  @@index([subCategoryId])
+  @@index([cropName])
+  @@map("crop")
+}

@@ -1,0 +1,18 @@
+model FldTechnicalFeedback {
+  feedbackId      Int                @id @default(autoincrement()) @map("feedback_id")
+  kvkId           Int
+  fldId           Int
+  cropId          Int?
+  feedback        String             @map("feedback")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  reportingYear DateTime? @map("reporting_year")
+crop            FldCrop?           @relation(fields: [cropId], references: [cropId])
+  fld             KvkFldIntroduction @relation(fields: [fldId], references: [kvkFldId], onDelete: Cascade)
+  kvk             Kvk                @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+@@index([kvkId])
+  @@index([fldId])
+  @@index([cropId])
+  @@index([reportingYear])
+  @@map("fld_technical_feedback")
+}

@@ -1,0 +1,27 @@
+model OftSubject {
+  oftSubjectId  Int               @id @default(autoincrement()) @map("oft_subject_id")
+  subjectName   String            @map("oft_subject_name")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  kvkOfts       Kvkoft[]
+  thematicAreas OftThematicArea[]
+
+  @@index([oftSubjectId])
+  @@index([subjectName])
+  @@map("oft_subject")
+}
+
+model OftThematicArea {
+  oftThematicAreaId Int         @id @default(autoincrement()) @map("oft_thematic_area_id")
+  thematicAreaName  String      @map("oft_thematic_area_name")
+  oftSubjectId      Int?        @map("oft_subject_id")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  kvkOfts           Kvkoft[]
+  subject           OftSubject? @relation(fields: [oftSubjectId], references: [oftSubjectId], onDelete: Cascade)
+
+  @@index([oftThematicAreaId])
+  @@index([oftSubjectId])
+  @@index([thematicAreaName])
+  @@map("oft_thematic_area")
+}

@@ -1,0 +1,80 @@
+const extensionActivityRepository = require('../../repositories/forms/extensionActivityRepository.js');
+const reportCacheInvalidationService = require('../reports/reportCacheInvalidationService.js');
+
+const extensionActivityService = {
+    /**
+     * Create a new Extension Activity
+     */
+    createExtensionActivity: async (data, user) => {
+        const result = await extensionActivityRepository.create(data, null, user);
+        const kvkId = result?.kvkId ?? user?.kvkId;
+        await reportCacheInvalidationService.invalidateDataSourceForKvk('extensionOutreachReport', kvkId);
+        return result;
+    },
+
+    /**
+     * Get all Extension Activities
+     */
+    getAllExtensionActivities: async (filters = {}, user) => {
+        const activities = await extensionActivityRepository.findAll(filters, user);
+
+        return activities.map(activity => {
+            // reportingYear is already derived from startDate by the repository
+            // (_mapResponse) as a financial-year string. Don't recompute it as a
+            // number here — the list formats it via `new Date(...)`, and a bare
+            // number (e.g. 2026) parses to 1970.
+
+            // Calculate total participants (using both naming conventions)
+            const farmersSum =
+                (activity.gen_m ?? activity.farmersGeneralM ?? 0) + (activity.gen_f ?? activity.farmersGeneralF ?? 0) +
+                (activity.obc_m ?? activity.farmersObcM ?? 0) + (activity.obc_f ?? activity.farmersObcF ?? 0) +
+                (activity.sc_m ?? activity.farmersScM ?? 0) + (activity.sc_f ?? activity.farmersScF ?? 0) +
+                (activity.st_m ?? activity.farmersStM ?? 0) + (activity.st_f ?? activity.farmersStF ?? 0);
+
+            const officialsSum =
+                (activity.ext_gen_m ?? activity.officialsGeneralM ?? 0) + (activity.ext_gen_f ?? activity.officialsGeneralF ?? 0) +
+                (activity.ext_obc_m ?? activity.officialsObcM ?? 0) + (activity.ext_obc_f ?? activity.officialsObcF ?? 0) +
+                (activity.ext_sc_m ?? activity.officialsScM ?? 0) + (activity.ext_sc_f ?? activity.officialsScF ?? 0) +
+                (activity.ext_st_m ?? activity.officialsStM ?? 0) + (activity.ext_st_f ?? activity.officialsStF ?? 0);
+
+            return {
+                ...activity,
+                totalParticipants: farmersSum + officialsSum,
+                // extensionActivityType is set by _mapRegularResponse; use it as the display name
+                kvkName: activity.kvkName || (activity.kvk ? activity.kvk.kvkName : ''),
+                activityName: activity.extensionActivityType || (activity.activity ? activity.activity.activityName : ''),
+                staffName: activity.staffName || (activity.staff ? activity.staff.staffName : ''),
+            };
+        });
+    },
+
+    /**
+     * Get Extension Activity by ID
+     */
+    getExtensionActivityById: async (id, user) => {
+        return await extensionActivityRepository.findById(id, user);
+    },
+
+    /**
+     * Update Extension Activity
+     */
+    updateExtensionActivity: async (id, data, user) => {
+        const result = await extensionActivityRepository.update(id, data, user);
+        const kvkId = result?.kvkId ?? user?.kvkId;
+        await reportCacheInvalidationService.invalidateDataSourceForKvk('extensionOutreachReport', kvkId);
+        return result;
+    },
+
+    /**
+     * Delete Extension Activity
+     */
+    deleteExtensionActivity: async (id, user) => {
+        const existing = await extensionActivityRepository.findById(id, user);
+        const result = await extensionActivityRepository.delete(id, user);
+        const kvkId = existing?.kvkId ?? user?.kvkId;
+        await reportCacheInvalidationService.invalidateDataSourceForKvk('extensionOutreachReport', kvkId);
+        return result;
+    },
+};
+
+module.exports = extensionActivityService;

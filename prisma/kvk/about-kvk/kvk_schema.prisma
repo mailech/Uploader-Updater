@@ -1,0 +1,161 @@
+model Kvk {
+  kvkId                         Int                            @id @default(autoincrement()) @map("kvk_id")
+  kvkName                       String                         @map("kvk_name")
+  zoneId                        Int
+  stateId                       Int
+  districtId                    Int
+  orgId                         Int                            @map("org_id")
+  universityId                  Int?                           @map("university_id")
+  mobile                        String                         @map("mobile")
+  landline                      String?                        @map("landline")
+  fax                           String?                        @map("fax")
+  email                         String                         @map("email")
+  address                       String                         @map("address")
+  hostOrg                       String                         @map("host_org_name")
+  hostMobile                    String?                        @map("host_mobile")
+  hostLandline                  String?                        @map("host_landline")
+  hostFax                       String?                        @map("host_fax")
+  hostEmail                     String?                        @map("host_email")
+  hostAddress                   String?                        @map("host_address")
+  yearOfSanction                Int                            @map("year_of_sanction")
+  createdAt                     DateTime                       @default(now()) @map("created_at")
+  updatedAt                     DateTime                       @updatedAt @map("updated_at")
+  aryaCurrentYear               AryaCurrentYear[]
+  aryaPrevYear                  AryaPrevYear[]
+  atariMeeting                  AtariMeeting[]
+  beneficiariesDetails          BeneficiariesDetails[]
+  cfldTechnicalParameters       CfldTechnicalParameter[]
+  csisa                         Csisa[]
+  demonstrationInfo             DemonstrationInfo[]
+  farmersPracticingNaturalFarming FarmersPracticingNaturalFarming[]
+  drmrActivity                  DrmrActivity[]
+  drmrDetails                   DrmrDetails[]
+  extensionActivityOrganized    ExtensionActivityOrganized[]
+  farmerAwards                  FarmerAward[]
+  financialInformation          FinancialInformation[]
+  fldExtensions                 FldExtension[]
+  fldTechnicalFeedbacks         FldTechnicalFeedback[]
+  fpoCbboDetails                FpoCbboDetails[]
+  fpoManagements                FpoManagement[]
+  geographicalInfo              GeographicalInfo[]
+  hrdPrograms                   HrdProgram[]
+  district                      DistrictMaster                 @relation(fields: [districtId], references: [districtId])
+  org                           OrgMaster                      @relation(fields: [orgId], references: [orgId])
+  state                         StateMaster                    @relation(fields: [stateId], references: [stateId])
+  university                    UniversityMaster?              @relation(fields: [universityId], references: [universityId])
+  zone                          Zone                           @relation(fields: [zoneId], references: [zoneId])
+  agriDrones                    KvkAgriDrone[]
+  agriDroneDemonstrations       KvkAgriDroneDemonstration[]
+  kvkAwards                     KvkAward[]
+  bankAccounts                  KvkBankAccount[]
+  kvkBudgetUtilizations         KvkBudgetUtilization[]
+  equipments                    KvkEquipment[]
+  equipmentDetails              KvkEquipmentDetail[]
+  kvkExtensionActivities        KvkExtensionActivity[]
+  kvkFldIntroductions           KvkFldIntroduction[]
+  kvkImportantDayCelebrations   KvkImportantDayCelebration[]
+  infrastructures               KvkInfrastructure[]
+  kvkOfts                       Kvkoft[]
+  kvkOtherExtensionActivities   KvkOtherExtensionActivity[]
+  kvkOtherProgrammes            KvkOtherProgramme[]
+  productionSupplies            KvkProductionSupply[]
+  publicationDetails            KvkPublicationDetails[]
+  seedHubPrograms               KvkSeedHubProgram[]
+  soilWaterAnalyses             KkvSoilWaterAnalysis[]
+  soilWaterEquipments           KkvSoilWaterEquipment[]
+  staff                         KvkStaff[]
+  originalStaff                 KvkStaff[]                     @relation("OriginalKvk")
+  kvkTechnologyWeekCelebrations KvkTechnologyWeekCelebration[]
+  vehicles                      KvkVehicle[]
+  vehicleDetails                KvkVehicleDetail[]
+  worldSoilCelebrations         KkvWorldSoilCelebration[]
+  nicraBasicInfo                NicraBasicInfo[]
+  nicraDetails                  NicraDetails[]
+  nicraExtensionActivity        NicraExtensionActivity[]
+  nicraTraining                 NicraTraining[]
+  physicalInfo                  PhysicalInfo[]
+  sacMeeting                    SacMeeting[]
+  scientistAwards               ScientistAward[]
+  soilDataInformation           SoilDataInformation[]
+  transfersFrom                 StaffTransferHistory[]         @relation("TransferFrom")
+  transfersTo                   StaffTransferHistory[]         @relation("TransferTo")
+  tspScsp                       TspScsp[]
+  prevalentDiseasesInCrop       PrevalentDiseasesInCrop[]
+  prevalentDiseasesOnLivestock  PrevalentDiseasesOnLivestock[]
+  nykTraining                   NykTraining[]
+  vipVisitor                    VipVisitor[]
+  raweFetFitProgramme           RaweFetFitProgramme[]
+  ppvFraTraining                PpvFraTraining[]
+  ppvFraPlantVarieties          PpvFraPlantVarieties[]
+  swachhQuarterlyExpenditure    SwachhQuarterlyExpenditure[]
+  swachhtaHiSewa                SwachhtaHiSewa[]
+  swachhtaPakhwada              SwachhtaPakhwada[]
+  trainingAchievements          TrainingAchievement[]
+  users                         User[]
+  moduleImages                  ModuleImage[]
+  formAttachments               FormAttachment[]
+  targets                       Target[]
+  kvkImpactActivities           KvkImpactActivity[]
+  entrepreneurships             Entrepreneurship[]
+  successStories                SuccessStory[]
+  districtLevelData             DistrictLevelData[]
+  operationalAreas              OperationalArea[]
+  villageAdoptions              VillageAdoption[]
+  priorityThrustAreas           PriorityThrustArea[]
+  demonstrationUnits            DemonstrationUnit[]
+  instructionalFarmCrops        InstructionalFarmCrop[]
+  productionUnits               ProductionUnit[]
+  instructionalFarmLivestock    InstructionalFarmLivestock[]
+  hostelUtilizations            HostelUtilization[]
+  staffQuartersUtilizations     StaffQuartersUtilization[]
+  rainwaterHarvestings          RainwaterHarvesting[]
+  budgetDetails                 BudgetDetail[]
+  projectBudgets                ProjectBudget[]
+  revolvingFunds                RevolvingFund[]
+  revenueGenerations            RevenueGeneration[]
+  resourceGenerations           ResourceGeneration[]
+  functionalLinkages            FunctionalLinkage[]
+  nariNutritionalGarden         NariNutritionalGarden[]
+  nariBioFortifiedCrops         NariBioFortifiedCrop[]
+  nariValueAdditions            NariValueAddition[]
+  nariTrainingProgrammes        NariTrainingProgramme[]
+  nariExtensionActivities       NariExtensionActivity[]
+  nicraInterventions            NicraIntervention[]
+  nicraRevenueGenerateds        NicraRevenueGenerated[]
+  nicraFarmImplements           NicraFarmImplement[]
+  nicraConvergenceProgrammes    NicraConvergenceProgramme[]
+  nicraDignitariesVisiteds      NicraDignitariesVisited[]
+  nicraPiCopis                  NicraPiCopi[]
+  nicraSoilHealthCards          NicraSoilHealthCard[]
+  nicraVcrmcs                   NicraVcrmc[]
+  craDetails                    CraDetails[]
+  craExtensionActivities        CraExtensionActivity[]
+  kmas                          Kmas[]
+  mobileApps                    MobileApp[]
+  webPortals                    WebPortal[]
+  kisanSarathis                 KisanSarathi[]
+  msgDetails                    MsgDetails[]
+  userLoginActivities           UserLoginActivity[]
+  landDetails                   KvkLandDetail[]
+
+  @@index([zoneId])
+  @@index([stateId])
+  @@index([districtId])
+  @@index([orgId])
+  @@index([universityId])
+  @@index([kvkName])
+  @@index([email])
+  @@map("kvk")
+}
+
+model KvkLandDetail {
+  landId Int    @id @default(autoincrement()) @map("land_id")
+  kvkId  Int    @map("kvk_id")
+  item   String @map("item")
+  areaHa Float  @map("area_ha")
+
+  kvk Kvk @relation(fields: [kvkId], references: [kvkId], onDelete: Cascade)
+
+  @@index([kvkId])
+  @@map("kvk_land_details")
+}
